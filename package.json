@@ -8,8 +8,10 @@
     "start": "next start",
     "test": "buidler test",
     "compile": "buidler clean && buidler compile",
-    "typechain": "typechain --target ethers --outDir ./typechain 'artifacts/**/*.json'",
-    "chain": "ganache-cli --networkId 50 --accounts 20 -l 19000000 -e 10000000000 -m 'concert load couple harbor equip island argue ramp clarify fence smart topic'"
+    "typechain": "rm -rf ./typechain && typechain --target ethers --outDir ./typechain 'artifacts/**/*.json'",
+    "build:contracts": "yarn compile && yarn typechain",
+    "chain": "ganache-cli --networkId 50 --accounts 20 -l 19000000 -e 10000000000 -m 'concert load couple harbor equip island argue ramp clarify fence smart topic'",
+    "watch": "ts-node scripts/watch.ts"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^3.2.0",
@@ -28,9 +30,12 @@
     "buidler-typechain": "^0.2.2",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
+    "chokidar": "^3.4.3",
     "ethereum-waffle": "^2.3.0",
     "ethers": "4",
     "ganache-cli": "^6.12.0",
+    "prettier": "^2.1.2",
+    "system-commands": "^1.1.7",
     "ts-node": "^9.0.0",
     "typechain": "^3.0.0",
     "typechain-target-ethers": "^1.0.4",

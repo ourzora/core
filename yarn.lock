@@ -3345,7 +3345,7 @@ chokidar@3.3.0:
   optionalDependencies:
     fsevents "~2.1.1"
 
-chokidar@^3.4.0, chokidar@^3.4.1:
+chokidar@^3.4.0, chokidar@^3.4.1, chokidar@^3.4.3:
   version "3.4.3"
   resolved "https://registry.yarnpkg.com/chokidar/-/chokidar-3.4.3.tgz#c1df38231448e45ca4ac588e6c79573ba6a57d5b"
   integrity sha512-DtM3g7juCXQxFVSNPNByEC2+NImtBuxQQvWlHunpJIS5Ocr0lG306cC7FCi7cEA0fzmybPUIl4txBIobk1gGOQ==
@@ -9347,6 +9347,11 @@ swarm-js@^0.1.40:
     setimmediate "^1.0.5"
     tar "^4.0.2"
     xhr-request "^1.0.1"
+
+system-commands@^1.1.7:
+  version "1.1.7"
+  resolved "https://registry.yarnpkg.com/system-commands/-/system-commands-1.1.7.tgz#f100c0d7da5d489d065b43625fc9fef1c38b38f2"
+  integrity sha512-PfswB3P+qrSZcm7nIOJzKMe0qMp7wGVM7B+UYBkaduS6z2n+iM2sk4kw3G4+zY1aRI32+ZgKTUUAlhc3YSneJA==
 
 tapable@^1.0.0, tapable@^1.1.3:
   version "1.1.3"
