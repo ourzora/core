@@ -21,6 +21,11 @@ contract Invert is ERC721Burnable {
         _;
     }
 
+    modifier onlyApprovedOrOwner (address spender, uint256 tokenId) {
+        require(_isApprovedOrOwner(spender, tokenId), "Invert: Only approved or owner");
+        _;
+    }
+
     struct Bid {
         // Amount of the currency being bid
         uint256 amount;
@@ -81,7 +86,7 @@ contract Invert is ERC721Burnable {
 
         if(existingBid.amount > 0) {
             IERC20 refundToken = IERC20(existingBid.currency);
-            refundToken.transfer(msg.sender, existingBid.amount);
+            require(refundToken.transfer(msg.sender, existingBid.amount), "Invert: refund failed");
         }
 
         IERC20 token = IERC20(bidCurrency);
@@ -103,10 +108,29 @@ contract Invert is ERC721Burnable {
 
         require(bid.amount > 0, "Invert: cannot remove bid amount of 0");
 
-        delete _tokenBidders[tokenId][msg.sender];
-
         IERC20 token = IERC20(bidCurrency);
 
+        delete _tokenBidders[tokenId][msg.sender];
         require(token.transfer(msg.sender, bidAmount), "Invert: token transfer failed");
+    }
+
+    /**
+    * @dev Accepts a bid from a particular bidder. Can only be called by the token
+    * owner or an approved address. The bid currency is transferred to the owner,
+    * and the bid is deleted from the token. The ownership of the toke is
+    */
+    function acceptBid(uint256 tokenId, address bidder)
+        onlyApprovedOrOwner(msg.sender, tokenId)
+        public
+    {
+        Bid storage bid = _tokenBidders[tokenId][bidder];
+
+        require(bid.amount > 0, "Invert: cannot accept bid of 0");
+
+        IERC20 token = IERC20(bid.currency);
+
+        require(token.transfer(ownerOf(tokenId), bid.amount), "Invert: token transfer failed");
+        safeTransferFrom(ownerOf(tokenId), bidder, tokenId);
+        delete _tokenBidders[tokenId][bidder];
     }
 }

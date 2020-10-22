@@ -10,6 +10,7 @@ import { Wallet } from 'ethers';
 import { BigNumber, formatUnits } from 'ethers/utils';
 import { Ierc20 } from '../typechain/Ierc20';
 import { BaseErc20Factory } from '../typechain/BaseErc20Factory';
+import { AddressZero } from 'ethers/constants';
 
 chai.use(asPromised);
 
@@ -264,11 +265,8 @@ describe('Invert', () => {
   });
 
   describe('#removeBid', () => {
-    let invert: Invert;
     let bidCurrency: Ierc20;
     let otherCurrency: Ierc20;
-    let bidTokenId: number;
-    let otherTokenId: number;
 
     beforeEach(async () => {
       await deploy();
@@ -333,6 +331,76 @@ describe('Invert', () => {
       await expect(invert.removeBid(bidTokenId)).eventually.rejectedWith(
         revert('Invert: cannot remove bid amount of 0')
       );
+    });
+  });
+
+  describe('#acceptBid', () => {
+    let bidCurrency: Ierc20;
+    beforeEach(async () => {
+      await deploy();
+      const invertAsCreator = await invertAs(creatorWallet);
+      await mint(invertAsCreator);
+      const bidCurrencyAsCreator = await new BaseErc20Factory(
+        deployerWallet
+      ).deploy('Bid', 'BID', 18);
+      await bidCurrencyAsCreator.mint(bidderWallet.address, 100);
+      bidCurrency = BaseErc20Factory.connect(
+        bidCurrencyAsCreator.address,
+        bidderWallet
+      );
+      await bidCurrency.approve(invertAsCreator.address, 1);
+      const invert = await invertAs(bidderWallet);
+      await invert.setBid(await invert.tokenByIndex(0), 1, bidCurrency.address);
+    });
+
+    it('should not revert if called by an owner', async () => {
+      const invert = await invertAs(creatorWallet);
+      const tokenId = await invert.tokenByIndex(0);
+
+      await expect(invert.acceptBid(tokenId, bidderWallet.address)).eventually
+        .be.fulfilled;
+    });
+
+    it('should revert if not called by an owner', async () => {
+      const invert = await invertAs(bidderWallet);
+      const tokenId = await invert.tokenByIndex(0);
+
+      await expect(
+        invert.acceptBid(tokenId, bidderWallet.address)
+      ).eventually.rejectedWith(revert('Invert: Only approved or owner'));
+    });
+
+    it('should pay the previous owner the amount of the accepted bid and transfer the nft ownership', async () => {
+      const invert = await invertAs(creatorWallet);
+      const tokenId = await invert.tokenByIndex(0);
+
+      const beforeOwner = await invert.ownerOf(tokenId);
+      const beforeOwnerBalance = await bidCurrency.balanceOf(
+        creatorWallet.address
+      );
+      const beforeInvertBalance = await bidCurrency.balanceOf(invert.address);
+      await invert.acceptBid(tokenId, bidderWallet.address);
+      const afterOwner = await invert.ownerOf(tokenId);
+      const afterOwnerBalance = await bidCurrency.balanceOf(
+        creatorWallet.address
+      );
+      const afterInvertBalance = await bidCurrency.balanceOf(invert.address);
+
+      expect(beforeOwner).not.to.eq(afterOwner);
+      expect(afterOwner).to.eq(bidderWallet.address);
+      expect(toNum(afterOwnerBalance)).to.eq(toNum(beforeOwnerBalance) + 1);
+      expect(toNum(afterInvertBalance)).to.eq(toNum(beforeInvertBalance) - 1);
+    });
+
+    it('should remove the accepted bid', async () => {
+      const invert = await invertAs(creatorWallet);
+      const tokenId = await invert.tokenByIndex(0);
+      await invert.acceptBid(tokenId, bidderWallet.address);
+
+      const bid = await invert.bidForTokenBidder(tokenId, bidderWallet.address);
+      expect(toNum(bid.amount)).to.eq(0);
+      expect(bid.currency).to.eq(AddressZero);
+      expect(bid.bidder).to.eq(AddressZero);
     });
   });
 });
