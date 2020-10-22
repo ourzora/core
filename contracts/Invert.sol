@@ -1,20 +1,51 @@
 pragma solidity 0.6.8;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721Burnable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
 contract Invert is ERC721Burnable {
     using Counters for Counters.Counter;
+
+    modifier onlyExistingToken (uint256 tokenId) {
+        require(_exists(tokenId), "Invert: bid on nonexistant token");
+        _;
+    }
+
+    modifier onlyTransferAllowanceAndSolvent (address spender, address currencyAddress, uint256 amount) {
+        IERC20 token = IERC20(currencyAddress);
+        require(token.allowance(spender, address(this)) >= amount, "Invert: allowance not high enough to transfer token.");
+        require(token.balanceOf(spender) >= amount, "Invert: Not enough funds to transfer token.");
+
+        _;
+    }
+
+    struct Bid {
+        // Amount of the currency being bid
+        uint256 amount;
+        // Address to the ERC20 token being used to bid
+        address currency;
+        // Address of the bidder
+        address bidder;
+    }
 
     Counters.Counter private _tokenIdTracker;
 
     // Mapping from creator address to their (enumerable) set of created tokens
     mapping (address => EnumerableSet.UintSet) private _creatorTokens;
 
+    // Mapping from token to mapping from bidder to bid
+    mapping(uint256 => mapping(address => Bid)) private _tokenBidders;
+
     constructor() public ERC721("Invert", "INVERT") {}
 
     function tokenOfCreatorByIndex(address creator, uint256 index) external view  returns (uint256) {
         return _creatorTokens[creator].at(index);
+    }
+
+    function bidForTokenBidder(uint256 tokenId, address bidder) external view returns (Bid memory) {
+        return _tokenBidders[tokenId][bidder];
     }
 
     /**
@@ -24,7 +55,7 @@ contract Invert is ERC721Burnable {
     *
     * See {ERC721-_safeMint}.
     */
-    function mint(address creator, string memory tokenURI) public virtual {
+    function mint(address creator, string memory tokenURI) public {
         // We cannot just use balanceOf to create the new tokenId because tokens
         // can be burned (destroyed), so we need a separate counter.
         uint256 tokenId = _tokenIdTracker.current();
@@ -34,5 +65,48 @@ contract Invert is ERC721Burnable {
 
         _setTokenURI(tokenId, tokenURI);
         _creatorTokens[creator].add(tokenId);
+    }
+
+    /**
+    * @dev Sets the bid on a particular token for a bidder. The token being used to bid
+    * is transferred from the bidder to this contract to be held until removed or accepted.
+    * If another bid already exists for the bidder, it is refunded.
+    */
+    function setBid(uint256 tokenId, uint256 amount, address bidCurrency)
+        onlyExistingToken(tokenId)
+        onlyTransferAllowanceAndSolvent(msg.sender, bidCurrency, amount)
+        public
+    {
+        Bid storage existingBid = _tokenBidders[tokenId][msg.sender];
+
+        if(existingBid.amount > 0) {
+            IERC20 refundToken = IERC20(existingBid.currency);
+            refundToken.transfer(msg.sender, existingBid.amount);
+        }
+
+        IERC20 token = IERC20(bidCurrency);
+        require(token.transferFrom(msg.sender, address(this), amount), "Invert: transfer failed");
+        _tokenBidders[tokenId][msg.sender] = Bid(amount, bidCurrency, msg.sender);
+    }
+
+    /**
+    * @dev Removes the bid on a particular token for a bidder. The bid amount
+    * is transferred from this contract to the bidder, if they have a bid placed.
+    */
+    function removeBid(uint256 tokenId)
+        onlyExistingToken(tokenId)
+        public
+    {
+        Bid storage bid =  _tokenBidders[tokenId][msg.sender];
+        uint256 bidAmount = bid.amount;
+        address bidCurrency = bid.currency;
+
+        require(bid.amount > 0, "Invert: cannot remove bid amount of 0");
+
+        delete _tokenBidders[tokenId][msg.sender];
+
+        IERC20 token = IERC20(bidCurrency);
+
+        require(token.transfer(msg.sender, bidAmount), "Invert: token transfer failed");
     }
 }

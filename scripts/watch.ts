@@ -1,8 +1,12 @@
 import chokidar from 'chokidar';
 import system from 'system-commands';
 
-chokidar.watch('./contracts').on('change', async (_, path) => {
+chokidar.watch('./contracts').on('change', async (path) => {
   console.log(`File ${path} changed. Recompiling..`);
-  await system('yarn build:contracts');
+  try {
+    await system('yarn build:contracts');
+  } catch (err) {
+    console.log('recompile failed with error: ', err);
+  }
   console.log('Recompiled.');
 });
