@@ -4,12 +4,16 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC721/ERC721Burnable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
+import "./Decimal.sol";
 
 contract Invert is ERC721Burnable {
     using Counters for Counters.Counter;
+    using SafeMath for uint256;
+
+    uint256 constant ONE_HUNDRED = 100;
 
     modifier onlyExistingToken (uint256 tokenId) {
-        require(_exists(tokenId), "Invert: bid on nonexistant token");
+        require(_exists(tokenId), "Invert: Nonexistant token");
         _;
     }
 
@@ -31,8 +35,21 @@ contract Invert is ERC721Burnable {
         uint256 amount;
         // Address to the ERC20 token being used to bid
         address currency;
+        // Number of decimals on the ERC20 token
+        uint256 currencyDecimals;
         // Address of the bidder
         address bidder;
+    }
+
+    struct BidShares {
+        // % of resale value that goes to the _previous_ owner of the nft
+        Decimal.D256 prevOwner;
+
+        // % of resale value that goes to the original creator of the nft
+        Decimal.D256 creator;
+
+        // % of resale value that goes to the seller (current owner) of the nft
+        Decimal.D256 owner;
     }
 
     Counters.Counter private _tokenIdTracker;
@@ -45,6 +62,9 @@ contract Invert is ERC721Burnable {
 
     // Mapping from token to previous owner of the token
     mapping(uint256 => address) private _previousTokenOwners;
+
+    // Mapping from token to the bid shares for the token
+    mapping(uint256 => BidShares) private _bidShares;
 
     constructor() public ERC721("Invert", "INVERT") {}
 
@@ -63,10 +83,12 @@ contract Invert is ERC721Burnable {
     *
     * See {ERC721-_safeMint}.
     */
-    function mint(address creator, string memory tokenURI) public {
+    function mint(address creator, string memory tokenURI, BidShares memory bidShares) public {
         // We cannot just use balanceOf to create the new tokenId because tokens
         // can be burned (destroyed), so we need a separate counter.
         uint256 tokenId = _tokenIdTracker.current();
+
+        require(_isValidBidShares(bidShares), "Invert: Invalid bid shares, must sum to 100");
 
         _safeMint(creator, tokenId);
         _tokenIdTracker.increment();
@@ -74,6 +96,7 @@ contract Invert is ERC721Burnable {
         _setTokenURI(tokenId, tokenURI);
         _creatorTokens[creator].add(tokenId);
         _previousTokenOwners[tokenId] = creator;
+        _bidShares[tokenId] = bidShares;
     }
 
     /**
@@ -81,11 +104,17 @@ contract Invert is ERC721Burnable {
     * is transferred from the bidder to this contract to be held until removed or accepted.
     * If another bid already exists for the bidder, it is refunded.
     */
-    function setBid(uint256 tokenId, uint256 amount, address bidCurrency)
+    function setBid(uint256 tokenId, Bid memory bid)
         onlyExistingToken(tokenId)
-        onlyTransferAllowanceAndSolvent(msg.sender, bidCurrency, amount)
+        onlyTransferAllowanceAndSolvent(msg.sender, bid.currency, bid.amount)
         public
     {
+        require(
+            minBidForToken(tokenId) <= bid.amount,
+            "Invert: Bid too small for share splitting"
+        );
+
+        // TODO: Move this to a _setBid that accepts the bidder
         Bid storage existingBid = _tokenBidders[tokenId][msg.sender];
 
         if(existingBid.amount > 0) {
@@ -93,9 +122,9 @@ contract Invert is ERC721Burnable {
             require(refundToken.transfer(msg.sender, existingBid.amount), "Invert: refund failed");
         }
 
-        IERC20 token = IERC20(bidCurrency);
-        require(token.transferFrom(msg.sender, address(this), amount), "Invert: transfer failed");
-        _tokenBidders[tokenId][msg.sender] = Bid(amount, bidCurrency, msg.sender);
+        IERC20 token = IERC20(bid.currency);
+        require(token.transferFrom(msg.sender, address(this), bid.amount), "Invert: transfer failed");
+        _tokenBidders[tokenId][msg.sender] = Bid(bid.amount, bid.currency, bid.currencyDecimals, msg.sender);
     }
 
     /**
@@ -133,8 +162,62 @@ contract Invert is ERC721Burnable {
 
         IERC20 token = IERC20(bid.currency);
 
+        _previousTokenOwners[tokenId] = ownerOf(tokenId);
         require(token.transfer(ownerOf(tokenId), bid.amount), "Invert: token transfer failed");
         safeTransferFrom(ownerOf(tokenId), bidder, tokenId);
         delete _tokenBidders[tokenId][bidder];
+    }
+
+    /**
+    * @dev Given a token idea, calculate the minimum bid amount required such that the bid shares can be split exactly.
+    * For example, if the bid fee % is all whole units, the minimum amount would be 100
+    * if the bid fee % has one decimal place , the minimum amount would be 1000
+    */
+    function minBidForToken(uint256 tokenId)
+        public
+        view
+        onlyExistingToken(tokenId)
+        returns (uint256)
+    {
+        BidShares memory bidShares = _bidShares[tokenId];
+
+        uint256 creatorMinCommonDenominator;
+        uint256 ownerMinCommonDenominator;
+        uint256 prevOwnerMinCommonDenominator;
+
+        for(uint i=Decimal.BASE_POW; i >= 0; i--) {
+            if(bidShares.creator.value % uint256(10**i) == 0) {
+                creatorMinCommonDenominator = uint256(ONE_HUNDRED).mul(10 ** (Decimal.BASE_POW-i));
+                break;
+            }
+        }
+        for(uint i=Decimal.BASE_POW; i >= 0; i--) {
+            if(bidShares.owner.value % uint256(10**i) == 0) {
+                ownerMinCommonDenominator = uint256(ONE_HUNDRED).mul(10 ** (Decimal.BASE_POW-i));
+                break;
+            }
+        }
+        for(uint i=Decimal.BASE_POW; i >= 0; i--) {
+            if(bidShares.prevOwner.value % uint256(10**i) == 0) {
+                prevOwnerMinCommonDenominator = uint256(ONE_HUNDRED).mul(10 ** (Decimal.BASE_POW-i));
+                break;
+            }
+        }
+
+        uint256 minBid = Math.max(creatorMinCommonDenominator, ownerMinCommonDenominator, prevOwnerMinCommonDenominator, 0);
+
+        return Math.min(ONE_HUNDRED * 10**Decimal.BASE_POW);
+    }
+
+    /**
+    * @dev Validates that the bid shares provided sum to 100
+    */
+    function _isValidBidShares(BidShares memory bidShares) internal view returns (bool){
+        uint256 hundredPercent = uint256(100).mul(Decimal.BASE);
+        uint256 creatorShare = bidShares.creator.value;
+        uint256 ownerShare = bidShares.owner.value;
+        uint256 prevOwnerShare = bidShares.prevOwner.value;
+        uint256 shareSum = creatorShare.add(ownerShare).add(prevOwnerShare);
+        return shareSum == hundredPercent;
     }
 }
