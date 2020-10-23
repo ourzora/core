@@ -43,6 +43,9 @@ contract Invert is ERC721Burnable {
     // Mapping from token to mapping from bidder to bid
     mapping(uint256 => mapping(address => Bid)) private _tokenBidders;
 
+    // Mapping from token to previous owner of the token
+    mapping(uint256 => address) private _previousTokenOwners;
+
     constructor() public ERC721("Invert", "INVERT") {}
 
     function tokenOfCreatorByIndex(address creator, uint256 index) external view  returns (uint256) {
@@ -70,6 +73,7 @@ contract Invert is ERC721Burnable {
 
         _setTokenURI(tokenId, tokenURI);
         _creatorTokens[creator].add(tokenId);
+        _previousTokenOwners[tokenId] = creator;
     }
 
     /**
