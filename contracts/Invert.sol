@@ -41,6 +41,15 @@ contract Invert is ERC721Burnable {
         address bidder;
     }
 
+    struct Ask {
+        // Amount of the currency being asked
+        uint256 amount;
+        // Address to the ERC20 token being asked
+        address currency;
+        // Number of decimals on the ERC20 token
+        uint256 currencyDecimals;
+    }
+
     struct BidShares {
         // % of resale value that goes to the _previous_ owner of the nft
         Decimal.D256 prevOwner;
@@ -68,6 +77,9 @@ contract Invert is ERC721Burnable {
 
     // Mapping from token to the bid shares for the token
     mapping(uint256 => BidShares) private _bidShares;
+
+    // Mapping from token to the current ask for the token
+    mapping(uint256 => Ask) private _tokenAsks;
 
     constructor() public ERC721("Invert", "INVERT") {}
 
@@ -97,6 +109,15 @@ contract Invert is ERC721Burnable {
         return _tokenBidders[tokenId][bidder];
     }
 
+    function currentAskForToken(uint256 tokenId)
+        external
+        view
+        onlyExistingToken(tokenId)
+        returns (Ask memory)
+    {
+        return _tokenAsks[tokenId];
+    }
+
     /**
     * @dev Creates a new token for `creator`. Its token ID will be automatically
     * assigned (and available on the emitted {IERC721-Transfer} event), and the token
@@ -119,6 +140,14 @@ contract Invert is ERC721Burnable {
         _tokenCreators[tokenId] = creator;
         _previousTokenOwners[tokenId] = creator;
         _bidShares[tokenId] = bidShares;
+    }
+
+    function setAsk(uint256 tokenId, Ask memory ask)
+        onlyApprovedOrOwner(msg.sender, tokenId)
+        onlyExistingToken(tokenId)
+        public
+    {
+        _tokenAsks[tokenId] = ask;
     }
 
     /**
@@ -147,6 +176,12 @@ contract Invert is ERC721Burnable {
         IERC20 token = IERC20(bid.currency);
         require(token.transferFrom(msg.sender, address(this), bid.amount), "Invert: transfer failed");
         _tokenBidders[tokenId][msg.sender] = Bid(bid.amount, bid.currency, bid.currencyDecimals, msg.sender);
+        // If the bid is over the ask price and the currency is the same, automatically accept the bid
+
+        if(bid.currency == _tokenAsks[tokenId].currency && bid.amount >= _tokenAsks[tokenId].amount) {
+            // Finalize exchange
+            _finalizeNFTTransfer(tokenId, bid.bidder);
+        }
     }
 
     /**
@@ -171,26 +206,16 @@ contract Invert is ERC721Burnable {
 
     /**
     * @dev Accepts a bid from a particular bidder. Can only be called by the token
-    * owner or an approved address. The bid currency is transferred to the owner,
-    * and the bid is deleted from the token. The ownership of the toke is
+    * owner or an approved address. See {_finalizeNFTTransfer}
     */
     function acceptBid(uint256 tokenId, address bidder)
         onlyApprovedOrOwner(msg.sender, tokenId)
         public
     {
         Bid storage bid = _tokenBidders[tokenId][bidder];
-        BidShares memory bidShares = _bidShares[tokenId];
-
         require(bid.amount > 0, "Invert: cannot accept bid of 0");
 
-        IERC20 token = IERC20(bid.currency);
-
-        require(token.transfer(ownerOf(tokenId), _splitShare(bidShares.owner, bid)), "Invert: token transfer to owner failed");
-        require(token.transfer(_tokenCreators[tokenId], _splitShare(bidShares.creator, bid)), "Invert: token transfer to creator failed");
-        require(token.transfer(_previousTokenOwners[tokenId], _splitShare(bidShares.prevOwner, bid)), "Invert: token transfer to prevOwner failed");
-        _previousTokenOwners[tokenId] = ownerOf(tokenId);
-        safeTransferFrom(ownerOf(tokenId), bidder, tokenId);
-        delete _tokenBidders[tokenId][bidder];
+        _finalizeNFTTransfer(tokenId, bidder);
     }
 
     /**
@@ -248,5 +273,25 @@ contract Invert is ERC721Burnable {
 
     function _splitShare(Decimal.D256 memory sharePercentage, Bid memory bid) public view returns (uint256) {
         return Decimal.mul(bid.amount, sharePercentage).div(100);
+    }
+
+    /**
+    * @dev Transfers the token to the bidder. The bid currency is transferred to the owner,
+    * and the bid is deleted from the token. Once transferred, the current ask (if any)
+    * is removed from the token.
+    */
+    function _finalizeNFTTransfer(uint256 tokenId, address bidder) internal {
+        Bid storage bid = _tokenBidders[tokenId][bidder];
+        BidShares memory bidShares = _bidShares[tokenId];
+
+        IERC20 token = IERC20(bid.currency);
+
+        require(token.transfer(ownerOf(tokenId), _splitShare(bidShares.owner, bid)), "Invert: token transfer to owner failed");
+        require(token.transfer(_tokenCreators[tokenId], _splitShare(bidShares.creator, bid)), "Invert: token transfer to creator failed");
+        require(token.transfer(_previousTokenOwners[tokenId], _splitShare(bidShares.prevOwner, bid)), "Invert: token transfer to prevOwner failed");
+        _previousTokenOwners[tokenId] = ownerOf(tokenId);
+        _safeTransfer(ownerOf(tokenId), bidder, tokenId, '');
+        delete _tokenAsks[tokenId];
+        delete _tokenBidders[tokenId][bidder];
     }
 }

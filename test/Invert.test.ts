@@ -326,6 +326,28 @@ describe('Invert', () => {
       );
     });
 
+    it('should automatically transfer if the bid is over the asking price', async () => {
+      const invert = await invertAs(bidderWallet);
+      const invertAsOwner = await invertAs(creatorWallet);
+      const bidTokenId = await invert.tokenByIndex(0);
+      await invertAsOwner.setAsk(bidTokenId, {
+        amount: 1,
+        currency: bidCurrency.address,
+        currencyDecimals: await bidCurrency.decimals(),
+      });
+      await bidCurrency.approve(invert.address, 100);
+      await invert.setBid(bidTokenId, {
+        amount: 100,
+        bidder: bidderWallet.address,
+        currency: bidCurrency.address,
+        currencyDecimals: await bidCurrency.decimals(),
+      });
+
+      await expect(invert.ownerOf(bidTokenId)).to.eventually.eq(
+        bidderWallet.address
+      );
+    });
+
     it('should be able to place a bid', async () => {
       const invert = await invertAs(bidderWallet);
       const bidTokenId = await invert.tokenByIndex(0);
@@ -666,6 +688,43 @@ describe('Invert', () => {
       const min = toNum(await invert.minBidForToken(tokenId));
 
       await expect(min).to.eq(1000);
+    });
+  });
+
+  describe('#setAsk', () => {
+    beforeEach(async () => {
+      await deploy();
+      const invertAsCreator = await invertAs(creatorWallet);
+      await mint(invertAsCreator);
+    });
+
+    it('should revert if not called by the token owner', async () => {
+      const invert = await invertAs(bidderWallet);
+      const tokenId = await invert.tokenByIndex(0);
+
+      await expect(
+        invert.setAsk(tokenId, {
+          amount: 0,
+          currency: AddressZero,
+          currencyDecimals: 18,
+        })
+      ).eventually.rejectedWith('Invert: Only approved or owner');
+    });
+
+    it('should set the ask for a token when called by the owner', async () => {
+      const invert = await invertAs(creatorWallet);
+      const tokenId = await invert.tokenByIndex(0);
+      await expect(
+        invert.setAsk(tokenId, {
+          amount: 10,
+          currency: AddressZero,
+          currencyDecimals: 18,
+        })
+      ).eventually.fulfilled;
+      const ask = await invert.currentAskForToken(tokenId);
+      expect(toNum(ask.amount)).eq(10);
+      expect(ask.currency).eq(AddressZero);
+      expect(toNum(ask.currencyDecimals)).eq(18);
     });
   });
 });
