@@ -94,7 +94,7 @@ describe('Invert', () => {
     });
   });
 
-  describe('#creatorOfTokenByIndex', () => {
+  describe('#creatorOfToken', () => {
     let invert: Invert;
     beforeEach(async () => {
       await deploy();
@@ -107,11 +107,48 @@ describe('Invert', () => {
       const token1 = await invert.tokenByIndex(0);
       const token2 = await invert.tokenByIndex(1);
 
-      await expect(invert.creatorOfTokenByIndex(token1)).to.eventually.eq(
+      await expect(invert.creatorOfToken(token1)).to.eventually.eq(
         creatorWallet.address
       );
-      await expect(invert.creatorOfTokenByIndex(token2)).to.eventually.eq(
+      await expect(invert.creatorOfToken(token2)).to.eventually.eq(
         ownerWallet.address
+      );
+    });
+  });
+
+  describe('#prevOwnerOfToken', () => {
+    let invert: Invert;
+    beforeEach(async () => {
+      await deploy();
+      invert = await invertAs(bidderWallet);
+      await mint(invert);
+      const bidCurrencyAsCreator = await new BaseErc20Factory(
+        deployerWallet
+      ).deploy('Bid', 'BID', 18);
+      await bidCurrencyAsCreator.mint(bidderWallet.address, 1000);
+      const bidCurrency = BaseErc20Factory.connect(
+        bidCurrencyAsCreator.address,
+        bidderWallet
+      );
+      const tokenId = await invert.tokenByIndex(0);
+      await bidCurrency.approve(invert.address, 1000);
+      await invert.setBid(tokenId, {
+        amount: 100,
+        currency: bidCurrency.address,
+        currencyDecimals: await bidCurrency.decimals(),
+        bidder: bidderWallet.address,
+      });
+
+      await (await invertAs(creatorWallet)).acceptBid(
+        tokenId,
+        bidderWallet.address
+      );
+    });
+
+    it('returns the previous owner of a given token', async () => {
+      const token1 = await invert.tokenByIndex(0);
+      await expect(invert.prevOwnerOfToken(token1)).to.eventually.eq(
+        creatorWallet.address
       );
     });
   });

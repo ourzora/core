@@ -75,13 +75,22 @@ contract Invert is ERC721Burnable {
         return _creatorTokens[creator].at(index);
     }
 
-    function creatorOfTokenByIndex(uint256 tokenId)
+    function creatorOfToken(uint256 tokenId)
         external
         view
         onlyExistingToken(tokenId)
         returns (address)
     {
         return _tokenCreators[tokenId];
+    }
+
+    function prevOwnerOfToken(uint256 tokenId)
+        external
+        view
+        onlyExistingToken(tokenId)
+        returns(address)
+    {
+        return _previousTokenOwners[tokenId];
     }
 
     function bidForTokenBidder(uint256 tokenId, address bidder) external view returns (Bid memory) {
