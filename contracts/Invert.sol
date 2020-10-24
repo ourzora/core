@@ -57,6 +57,9 @@ contract Invert is ERC721Burnable {
     // Mapping from creator address to their (enumerable) set of created tokens
     mapping (address => EnumerableSet.UintSet) private _creatorTokens;
 
+    // Mapping from token id to creator address
+    mapping (uint256 => address) private _tokenCreators;
+
     // Mapping from token to mapping from bidder to bid
     mapping(uint256 => mapping(address => Bid)) private _tokenBidders;
 
@@ -70,6 +73,15 @@ contract Invert is ERC721Burnable {
 
     function tokenOfCreatorByIndex(address creator, uint256 index) external view  returns (uint256) {
         return _creatorTokens[creator].at(index);
+    }
+
+    function creatorOfTokenByIndex(uint256 tokenId)
+        external
+        view
+        onlyExistingToken(tokenId)
+        returns (address)
+    {
+        return _tokenCreators[tokenId];
     }
 
     function bidForTokenBidder(uint256 tokenId, address bidder) external view returns (Bid memory) {
@@ -95,6 +107,7 @@ contract Invert is ERC721Burnable {
 
         _setTokenURI(tokenId, tokenURI);
         _creatorTokens[creator].add(tokenId);
+        _tokenCreators[tokenId] = creator;
         _previousTokenOwners[tokenId] = creator;
         _bidShares[tokenId] = bidShares;
     }
@@ -157,13 +170,16 @@ contract Invert is ERC721Burnable {
         public
     {
         Bid storage bid = _tokenBidders[tokenId][bidder];
+        BidShares memory bidShares = _bidShares[tokenId];
 
         require(bid.amount > 0, "Invert: cannot accept bid of 0");
 
         IERC20 token = IERC20(bid.currency);
 
+        require(token.transfer(ownerOf(tokenId), _splitShare(bidShares.owner, bid)), "Invert: token transfer to owner failed");
+        require(token.transfer(_tokenCreators[tokenId], _splitShare(bidShares.creator, bid)), "Invert: token transfer to creator failed");
+        require(token.transfer(_previousTokenOwners[tokenId], _splitShare(bidShares.prevOwner, bid)), "Invert: token transfer to prevOwner failed");
         _previousTokenOwners[tokenId] = ownerOf(tokenId);
-        require(token.transfer(ownerOf(tokenId), bid.amount), "Invert: token transfer failed");
         safeTransferFrom(ownerOf(tokenId), bidder, tokenId);
         delete _tokenBidders[tokenId][bidder];
     }
@@ -181,9 +197,9 @@ contract Invert is ERC721Burnable {
     {
         BidShares memory bidShares = _bidShares[tokenId];
 
-        uint256 creatorMinCommonDenominator;
-        uint256 ownerMinCommonDenominator;
-        uint256 prevOwnerMinCommonDenominator;
+        uint256 creatorMinCommonDenominator = 0;
+        uint256 ownerMinCommonDenominator = 0;
+        uint256 prevOwnerMinCommonDenominator = 0;
 
         for(uint i=Decimal.BASE_POW; i >= 0; i--) {
             if(bidShares.creator.value % uint256(10**i) == 0) {
@@ -204,9 +220,9 @@ contract Invert is ERC721Burnable {
             }
         }
 
-        uint256 minBid = Math.max(creatorMinCommonDenominator, ownerMinCommonDenominator, prevOwnerMinCommonDenominator, 0);
+        uint256 minBid = Math.max(Math.max(creatorMinCommonDenominator, ownerMinCommonDenominator),  prevOwnerMinCommonDenominator);
 
-        return Math.min(ONE_HUNDRED * 10**Decimal.BASE_POW);
+        return Math.min((ONE_HUNDRED * 10**Decimal.BASE_POW), minBid);
     }
 
     /**
@@ -219,5 +235,9 @@ contract Invert is ERC721Burnable {
         uint256 prevOwnerShare = bidShares.prevOwner.value;
         uint256 shareSum = creatorShare.add(ownerShare).add(prevOwnerShare);
         return shareSum == hundredPercent;
+    }
+
+    function _splitShare(Decimal.D256 memory sharePercentage, Bid memory bid) public view returns (uint256) {
+        return Decimal.mul(bid.amount, sharePercentage).div(100);
     }
 }
