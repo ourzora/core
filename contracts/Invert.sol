@@ -30,6 +30,18 @@ contract Invert is ERC721Burnable {
         _;
     }
 
+    event BidCreated(
+        uint256 tokenId,
+        address bidder
+    );
+    event AskCreated(
+        uint256 tokenId,
+        address owner,
+        uint256 amount,
+        address currency,
+        uint256 currencyDecimals
+    );
+
     struct Bid {
         // Amount of the currency being bid
         uint256 amount;
@@ -148,6 +160,7 @@ contract Invert is ERC721Burnable {
         public
     {
         _tokenAsks[tokenId] = ask;
+        emit AskCreated(tokenId, ownerOf(tokenId), ask.amount, ask.currency, ask.currencyDecimals);
     }
 
     /**
@@ -169,15 +182,16 @@ contract Invert is ERC721Burnable {
         Bid storage existingBid = _tokenBidders[tokenId][msg.sender];
 
         if(existingBid.amount > 0) {
-            IERC20 refundToken = IERC20(existingBid.currency);
-            require(refundToken.transfer(msg.sender, existingBid.amount), "Invert: refund failed");
+            removeBid(tokenId);
         }
 
         IERC20 token = IERC20(bid.currency);
         require(token.transferFrom(msg.sender, address(this), bid.amount), "Invert: transfer failed");
         _tokenBidders[tokenId][msg.sender] = Bid(bid.amount, bid.currency, bid.currencyDecimals, msg.sender);
-        // If the bid is over the ask price and the currency is the same, automatically accept the bid
 
+        emit BidCreated(tokenId, bid.bidder);
+
+        // If the bid is over the ask price and the currency is the same, automatically accept the bid
         if(bid.currency == _tokenAsks[tokenId].currency && bid.amount >= _tokenAsks[tokenId].amount) {
             // Finalize exchange
             _finalizeNFTTransfer(tokenId, bid.bidder);
@@ -202,6 +216,8 @@ contract Invert is ERC721Burnable {
 
         delete _tokenBidders[tokenId][msg.sender];
         require(token.transfer(msg.sender, bidAmount), "Invert: token transfer failed");
+
+        emit BidCreated(tokenId, msg.sender);
     }
 
     /**
@@ -293,5 +309,7 @@ contract Invert is ERC721Burnable {
         _safeTransfer(ownerOf(tokenId), bidder, tokenId, '');
         delete _tokenAsks[tokenId];
         delete _tokenBidders[tokenId][bidder];
+
+        emit BidCreated(tokenId, bidder);
     }
 }
