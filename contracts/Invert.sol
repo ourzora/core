@@ -51,13 +51,13 @@ contract Invert is ERC721Burnable {
     }
 
     struct BidShares {
-        // % of resale value that goes to the _previous_ owner of the nft
+        // % of sale value that goes to the _previous_ owner of the nft
         Decimal.D256 prevOwner;
 
-        // % of resale value that goes to the original creator of the nft
+        // % of sale value that goes to the original creator of the nft
         Decimal.D256 creator;
 
-        // % of resale value that goes to the seller (current owner) of the nft
+        // % of sale value that goes to the seller (current owner) of the nft
         Decimal.D256 owner;
     }
 
