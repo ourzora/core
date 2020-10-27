@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^3.2.0",
+    "@openzeppelin/contracts-ethereum-package": "^3.0.0",
     "eth-sig-util": "^2.5.3",
     "ethereumjs-util": "^7.0.7",
     "next": "9.5.5",
