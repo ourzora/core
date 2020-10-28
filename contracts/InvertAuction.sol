@@ -31,22 +31,10 @@ contract InvertAuction {
     mapping(uint256 => Ask) private _tokenAsks;
 
 
-    modifier onlyExistingToken(uint256 tokenId) {
-        address owner = IERC721(_tokenContract).ownerOf(tokenId);
-        require(owner != address(0), "InvertAuction: Token does not exist");
-        _;
-    }
-
-    modifier onlyApprovedOrOwner(address spender, uint256 tokenId) {
-        address owner = IERC721(_tokenContract).ownerOf(tokenId);
-        require(spender == owner || IERC721(_tokenContract).getApproved(tokenId) == spender || IERC721(_tokenContract).isApprovedForAll(owner, spender), "InvertAuction: not approved or owner");
-        _;
-    }
-
     modifier onlyTransferAllowanceAndSolvent (address spender, address currencyAddress, uint256 amount) {
         IERC20 token = IERC20(currencyAddress);
-        require(token.allowance(spender, address(this)) >= amount, "Invert: allowance not high enough to transfer token.");
-        require(token.balanceOf(spender) >= amount, "Invert: Not enough funds to transfer token.");
+        require(token.allowance(spender, address(this)) >= amount, "InvertAuction: allowance not high enough to transfer token.");
+        require(token.balanceOf(spender) >= amount, "InvertAuction: Not enough funds to transfer token.");
         _;
     }
 
@@ -123,18 +111,34 @@ contract InvertAuction {
         return _tokenAsks[tokenId];
     }
 
+    function bidSharesForToken(uint256 tokenId)
+    external
+    view
+    returns (BidShares memory)
+    {
+        return _bidShares[tokenId];
+    }
+
     function addBidShares(uint256 tokenId, BidShares memory bidShares)
         public
         onlyTokenCaller
     {
+        require(isValidBidShares(bidShares), "InvertAuction: Invalid bid shares, must sum to 100");
         _bidShares[tokenId] = bidShares;
     }
 
+    /**
+    * @dev Sets the ask on a particular token. If the ask cannot be evenly split into the token's
+    * bid shares, this reverts.
+    */
     function setAsk(uint tokenId, Ask memory ask)
         public
-        onlyExistingToken(tokenId)
-        onlyApprovedOrOwner(msg.sender, tokenId)
+        onlyTokenCaller
     {
+        require(
+            minBidForToken(tokenId) <= ask.amount,
+            "InvertAuction: Ask too small for share splitting"
+        );
         _tokenAsks[tokenId] = ask;
     }
 
@@ -144,25 +148,25 @@ contract InvertAuction {
     * If another bid already exists for the bidder, it is refunded.
     */
     function setBid(uint256 tokenId, Bid memory bid)
-        onlyExistingToken(tokenId)
-        onlyTransferAllowanceAndSolvent(msg.sender, bid.currency, bid.amount)
         public
+        onlyTokenCaller
+        onlyTransferAllowanceAndSolvent(bid.bidder, bid.currency, bid.amount)
     {
+        // TODO: validate bidder is not ZeroAddress
         require(
             minBidForToken(tokenId) <= bid.amount,
-            "Invert: Bid too small for share splitting"
+            "InvertAuction: Bid too small for share splitting"
         );
 
-        // TODO: Move this to a _setBid that accepts the bidder
-        Bid storage existingBid = _tokenBidders[tokenId][msg.sender];
+        Bid storage existingBid = _tokenBidders[tokenId][bid.bidder];
 
         if (existingBid.amount > 0) {
-            removeBid(tokenId);
+            removeBid(tokenId, bid.bidder);
         }
 
         IERC20 token = IERC20(bid.currency);
-        require(token.transferFrom(msg.sender, address(this), bid.amount), "Invert: transfer failed");
-        _tokenBidders[tokenId][msg.sender] = Bid(bid.amount, bid.currency, bid.currencyDecimals, msg.sender);
+        require(token.transferFrom(bid.bidder, address(this), bid.amount), "InvertAuction: transfer failed");
+        _tokenBidders[tokenId][bid.bidder] = Bid(bid.amount, bid.currency, bid.currencyDecimals, bid.bidder);
 
         // If the bid is over the ask price and the currency is the same, automatically accept the bid
         if (bid.currency == _tokenAsks[tokenId].currency && bid.amount >= _tokenAsks[tokenId].amount) {
@@ -175,21 +179,20 @@ contract InvertAuction {
     * @dev Removes the bid on a particular token for a bidder. The bid amount
     * is transferred from this contract to the bidder, if they have a bid placed.
     */
-    function removeBid(uint256 tokenId)
-        onlyExistingToken(tokenId)
+    function removeBid(uint256 tokenId, address bidder)
+        onlyTokenCaller
         public
     {
-        // TODO this will break, make it onlyTokenContract and pass in msg sender
-        Bid storage bid =  _tokenBidders[tokenId][msg.sender];
+        Bid storage bid =  _tokenBidders[tokenId][bidder];
         uint256 bidAmount = bid.amount;
         address bidCurrency = bid.currency;
 
-        require(bid.amount > 0, "Invert: cannot remove bid amount of 0");
+        require(bid.amount > 0, "InvertAuction: cannot remove bid amount of 0");
 
         IERC20 token = IERC20(bidCurrency);
 
-        delete _tokenBidders[tokenId][msg.sender];
-        require(token.transfer(msg.sender, bidAmount), "Invert: token transfer failed");
+        delete _tokenBidders[tokenId][bidder];
+        require(token.transfer(bidder, bidAmount), "InvertAuction: token transfer failed");
     }
 
     /**
@@ -197,28 +200,28 @@ contract InvertAuction {
     * owner or an approved address. See {_finalizeNFTTransfer}
     */
     function acceptBid(uint256 tokenId, address bidder)
-    // TODO only token contract, pass in original message sender
-    onlyApprovedOrOwner(msg.sender, tokenId)
+    onlyTokenCaller
     public
     {
         Bid storage bid = _tokenBidders[tokenId][bidder];
-        require(bid.amount > 0, "Invert: cannot accept bid of 0");
+        require(bid.amount > 0, "InvertAuction: cannot accept bid of 0");
 
         _finalizeNFTTransfer(tokenId, bidder);
     }
 
     /**
-    * @dev Given a token idea, calculate the minimum bid amount required such that the bid shares can be split exactly.
+    * @dev Given a token id, calculate the minimum bid amount required such that the bid shares can be split exactly.
     * For example, if the bid fee % is all whole units, the minimum amount would be 100
     * if the bid fee % has one decimal place , the minimum amount would be 1000
     */
     function minBidForToken(uint256 tokenId)
-    public
-    view
-    onlyExistingToken(tokenId)
-    returns (uint256)
+        public
+        view
+        returns (uint256)
     {
         BidShares memory bidShares = _bidShares[tokenId];
+
+        require(isValidBidShares(bidShares), "InvertAuction: Invalid bid shares for token");
 
         uint256 creatorMinCommonDenominator = 0;
         uint256 ownerMinCommonDenominator = 0;
@@ -270,9 +273,9 @@ contract InvertAuction {
 
         IERC20 token = IERC20(bid.currency);
 
-        require(token.transfer(IERC721(_tokenContract).ownerOf(tokenId), _splitShare(bidShares.owner, bid)), "Invert: token transfer to owner failed");
-        require(token.transfer(InvertToken(_tokenContract).tokenCreator(tokenId), _splitShare(bidShares.creator, bid)), "Invert: token transfer to creator failed");
-        require(token.transfer(InvertToken(_tokenContract).tokenPreviousOwner(tokenId), _splitShare(bidShares.prevOwner, bid)), "Invert: token transfer to prevOwner failed");
+        require(token.transfer(IERC721(_tokenContract).ownerOf(tokenId), _splitShare(bidShares.owner, bid)), "InvertAuction: token transfer to owner failed");
+        require(token.transfer(InvertToken(_tokenContract).tokenCreator(tokenId), _splitShare(bidShares.creator, bid)), "InvertAuction: token transfer to creator failed");
+        require(token.transfer(InvertToken(_tokenContract).tokenPreviousOwner(tokenId), _splitShare(bidShares.prevOwner, bid)), "InvertAuction: token transfer to prevOwner failed");
 
         InvertToken(_tokenContract).auctionTransfer(tokenId, bidder);
 
