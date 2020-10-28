@@ -264,7 +264,7 @@ contract InvertAuction {
     }
 
     function _splitShare(Decimal.D256 memory sharePercentage, Bid memory bid) public pure returns (uint256) {
-        return Decimal.mul(bid.amount, sharePercentage).div(100);
+        return Decimal.mul(bid.amount, sharePercentage).div(uint256(100).mul(Decimal.BASE));
     }
 
     function _finalizeNFTTransfer(uint256 tokenId, address bidder) internal {
