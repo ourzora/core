@@ -7,10 +7,9 @@ import { InvertAuctionFactory } from '../typechain/InvertAuctionFactory';
 import { Wallet } from 'ethers';
 import Decimal from '../utils/Decimal';
 import { BigNumber, BigNumberish, formatUnits } from 'ethers/utils';
-import { AddressZero, MaxUint256, Zero } from 'ethers/constants';
+import { AddressZero, MaxUint256 } from 'ethers/constants';
 import { BaseErc20Factory } from '../typechain/BaseErc20Factory';
 import { InvertAuction } from '../typechain/InvertAuction';
-import { defaultCoerceFunc } from 'ethers/utils/abi-coder';
 
 chai.use(asPromised);
 
@@ -109,6 +108,9 @@ describe('InvertAuction', () => {
       spender,
       MaxUint256
     );
+  }
+  async function getBalance(currency: string, owner: string) {
+    return BaseErc20Factory.connect(currency, deployerWallet).balanceOf(owner);
   }
   async function setBid(auction: InvertAuction, bid: Bid, tokenId = 1) {
     await auction.setBid(tokenId, bid);
@@ -268,16 +270,75 @@ describe('InvertAuction', () => {
     });
     it('should revert if the bidder does not have enough tokens to bid with', async () => {
       const auction = await auctionAs(mockTokenWallet);
+      await mintCurrency(currency, defaultBid.bidder);
 
       await expect(setBid(auction, defaultBid)).rejectedWith(
-        revert('InvertAuction: allowance not high enough to transfer token')
+        revert('InvertAuction: allowance not high enough to transfer token.')
       );
     });
     it('should revert if the bid does not have bid shares set yet', async () => {
       const auction = await auctionAs(mockTokenWallet);
+      await mintCurrency(currency, defaultBid.bidder);
+      await approveCurrency(currency, auction.address, bidderWallet);
       await expect(setBid(auction, defaultBid)).rejectedWith(
-        revert('InvertAuction: allowance not high enough to transfer token')
+        revert('InvertAuction: Invalid bid shares for token')
       );
+    });
+
+    it('should revert if the bid is not valid', async () => {
+      const invalidBid = { ...defaultBid, amount: 101 };
+      const auction = await auctionAs(mockTokenWallet);
+      await addBidShares(auction);
+      await mintCurrency(currency, defaultBid.bidder);
+      await approveCurrency(currency, auction.address, bidderWallet);
+      await expect(setBid(auction, invalidBid)).rejectedWith(
+        'InvertAuction: Bid invalid for share splitting'
+      );
+    });
+
+    it('should accept a valid bid', async () => {
+      const auction = await auctionAs(mockTokenWallet);
+      await addBidShares(auction);
+      await mintCurrency(currency, defaultBid.bidder);
+      await approveCurrency(currency, auction.address, bidderWallet);
+
+      const beforeBalance = toNum(
+        await getBalance(currency, defaultBid.bidder)
+      );
+
+      await expect(setBid(auction, defaultBid)).fulfilled;
+
+      const afterBalance = toNum(await getBalance(currency, defaultBid.bidder));
+      const bid = await auction.bidForTokenBidder(1, bidderWallet.address);
+      expect(bid.currency).eq(currency);
+      expect(toNum(bid.amount)).eq(defaultBid.amount);
+      expect(bid.bidder).eq(defaultBid.bidder);
+      expect(beforeBalance).eq(afterBalance + defaultBid.amount);
+    });
+
+    it('should refund the original bid if the bidder bids again', async () => {
+      const auction = await auctionAs(mockTokenWallet);
+      await addBidShares(auction);
+      await mintCurrency(currency, defaultBid.bidder);
+      await approveCurrency(currency, auction.address, bidderWallet);
+
+      const bidderBalance = toNum(
+        await BaseErc20Factory.connect(currency, bidderWallet).balanceOf(
+          bidderWallet.address
+        )
+      );
+
+      await setBid(auction, defaultBid);
+      await expect(
+        setBid(auction, { ...defaultBid, amount: defaultBid.amount * 2 })
+      ).fulfilled;
+
+      const afterBalance = toNum(
+        await BaseErc20Factory.connect(currency, bidderWallet).balanceOf(
+          bidderWallet.address
+        )
+      );
+      await expect(afterBalance).eq(bidderBalance - defaultBid.amount * 2);
     });
   });
 });
