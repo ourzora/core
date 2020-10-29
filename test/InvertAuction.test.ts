@@ -17,19 +17,20 @@ let provider = new JsonRpcProvider();
 let blockchain = new Blockchain(provider);
 
 type DecimalValue = { value: BigNumber };
+
 type BidShares = {
   owner: DecimalValue;
   prevOwner: DecimalValue;
   creator: DecimalValue;
 };
+
 type Ask = {
   currency: string;
-  currencyDecimals: BigNumberish;
   amount: BigNumberish;
 };
+
 type Bid = {
   currency: string;
-  currencyDecimals: BigNumberish;
   amount: BigNumberish;
   bidder: string;
 };
@@ -41,13 +42,30 @@ describe('InvertAuction', () => {
     mockTokenWallet,
     otherWallet,
   ] = generatedWallets(provider);
+
+  let defaultBidShares = {
+    prevOwner: Decimal.new(10),
+    owner: Decimal.new(80),
+    creator: Decimal.new(10),
+  };
+
+  let defaultTokenId = 1;
+  let defaultAsk = {
+    amount: 100,
+    currency: '0x41A322b28D0fF354040e2CbC676F0320d8c8850d',
+  };
+
   let auctionAddress: string;
 
   function revert(message: string) {
     return `VM Exception while processing transaction: revert ${message}`;
   }
-  function toNum(val: BigNumber) {
+  function toNumWei(val: BigNumber) {
     return parseFloat(formatUnits(val, 'wei'));
+  }
+
+  function toNumEther(val: BigNumber) {
+    return parseFloat(formatUnits(val, 'ether'));
   }
 
   async function auctionAs(wallet: Wallet) {
@@ -65,29 +83,26 @@ describe('InvertAuction', () => {
       deployerWallet
     ).configure(mockTokenWallet.address);
   }
+
+  async function readTokenContract() {
+    return InvertAuctionFactory.connect(
+      auctionAddress,
+      deployerWallet
+    ).tokenContract();
+  }
+
   async function addBidShares(
     auction: InvertAuction,
-    tokenId = 1,
+    tokenId: number,
     bidShares?: BidShares
   ) {
-    const defaultBidShares = {
-      prevOwner: Decimal.new(10),
-      owner: Decimal.new(80),
-      creator: Decimal.new(10),
-    };
-    bidShares = bidShares || defaultBidShares;
-
     return auction.addBidShares(tokenId, bidShares);
   }
-  async function setAsk(auction: InvertAuction, tokenId = 1, ask?: Ask) {
-    const defaultAsk = {
-      amount: 100,
-      currency: AddressZero,
-      currencyDecimals: 18,
-    };
-    ask = ask || defaultAsk;
+
+  async function setAsk(auction: InvertAuction, tokenId: number, ask?: Ask) {
     return auction.setAsk(tokenId, ask);
   }
+
   async function deployCurrency() {
     const currency = await new BaseErc20Factory(deployerWallet).deploy(
       'test',
@@ -96,9 +111,11 @@ describe('InvertAuction', () => {
     );
     return currency.address;
   }
-  async function mintCurrency(currency: string, to: string) {
-    await BaseErc20Factory.connect(currency, deployerWallet).mint(to, 1000);
+
+  async function mintCurrency(currency: string, to: string, value: number) {
+    await BaseErc20Factory.connect(currency, deployerWallet).mint(to, value);
   }
+
   async function approveCurrency(
     currency: string,
     spender: string,
@@ -112,7 +129,7 @@ describe('InvertAuction', () => {
   async function getBalance(currency: string, owner: string) {
     return BaseErc20Factory.connect(currency, deployerWallet).balanceOf(owner);
   }
-  async function setBid(auction: InvertAuction, bid: Bid, tokenId = 1) {
+  async function setBid(auction: InvertAuction, bid: Bid, tokenId: number) {
     await auction.setBid(tokenId, bid);
   }
 
@@ -130,16 +147,23 @@ describe('InvertAuction', () => {
     beforeEach(async () => {
       await deploy();
     });
+
     it('should revert if not called by the owner', async () => {
       await expect(
-        InvertAuctionFactory.connect(auctionAddress, otherWallet).configure(
-          mockTokenWallet.address
-        )
+        InvertAuctionFactory.connect(auctionAddress, otherWallet)
+          .configure(
+            mockTokenWallet.address
+          )
       ).eventually.rejectedWith(revert('InvertAuction: Only owner'));
     });
+
     it('should be callable by the owner', async () => {
       await expect(configure()).eventually.fulfilled;
+      const tokenContractAddress = await readTokenContract();
+
+      expect(tokenContractAddress).eq(mockTokenWallet.address);
     });
+
     it('should reject if called twice', async () => {
       await configure();
 
@@ -153,12 +177,12 @@ describe('InvertAuction', () => {
     beforeEach(async () => {
       await deploy();
       await configure();
-    });
+     });
 
     it('should reject if not called by the token address', async () => {
       const auction = await auctionAs(otherWallet);
 
-      await expect(addBidShares(auction)).rejectedWith(
+      await expect(addBidShares(auction, defaultTokenId, defaultBidShares)).rejectedWith(
         revert('InvertAuction: Only token contract')
       );
     });
@@ -166,25 +190,27 @@ describe('InvertAuction', () => {
     it('should set the bid shares if called by the token address', async () => {
       const auction = await auctionAs(mockTokenWallet);
 
-      await expect(addBidShares(auction)).eventually.fulfilled;
-      const bidShares = Object.values(
-        await auction.bidSharesForToken(1)
+      await expect(addBidShares(auction, defaultTokenId, defaultBidShares)).eventually.fulfilled;
+
+      const tokenBidShares = Object.values(
+        await auction.bidSharesForToken(defaultTokenId)
       ).map((s) => parseInt(formatUnits(s.value, 'ether')));
 
-      expect(bidShares[0]).eq(10);
-      expect(bidShares[1]).eq(10);
-      expect(bidShares[2]).eq(80);
+      expect(tokenBidShares[0]).eq(toNumEther(defaultBidShares.prevOwner.value));
+      expect(tokenBidShares[1]).eq(toNumEther(defaultBidShares.creator.value));
+      expect(tokenBidShares[2]).eq(toNumEther(defaultBidShares.owner.value));
     });
 
     it('should reject if the bid shares are invalid', async () => {
       const auction = await auctionAs(mockTokenWallet);
+      const invalidBidShares = {
+        prevOwner: Decimal.new(0),
+        owner: Decimal.new(0),
+        creator: Decimal.new(101),
+      }
 
       await expect(
-        addBidShares(auction, 1, {
-          prevOwner: Decimal.new(0),
-          owner: Decimal.new(0),
-          creator: Decimal.new(101),
-        })
+        addBidShares(auction, defaultTokenId, invalidBidShares)
       ).rejectedWith(
         revert('InvertAuction: Invalid bid shares, must sum to 100')
       );
@@ -200,32 +226,31 @@ describe('InvertAuction', () => {
     it('should reject if not called by the token address', async () => {
       const auction = await auctionAs(otherWallet);
 
-      await expect(setAsk(auction)).rejectedWith(
+      await expect(setAsk(auction, defaultTokenId, defaultAsk)).rejectedWith(
         revert('InvertAuction: Only token contract')
       );
     });
 
     it('should set the ask if called by the token address', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await addBidShares(auction);
+      await addBidShares(auction, defaultTokenId, defaultBidShares);
 
-      await expect(setAsk(auction)).eventually.fulfilled;
+      await expect(setAsk(auction, defaultTokenId, defaultAsk)).eventually.fulfilled;
 
-      const ask = await auction.currentAskForToken(1);
+      const ask = await auction.currentAskForToken(defaultTokenId);
 
-      expect(toNum(ask.amount)).to.eq(100);
-      expect(toNum(ask.currencyDecimals)).to.eq(18);
-      expect(ask.currency).to.eq(AddressZero);
+      expect(toNumWei(ask.amount)).to.eq(defaultAsk.amount);
+      expect(ask.currency).to.eq(defaultAsk.currency);
     });
 
     it('should reject if the ask is too low', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await addBidShares(auction);
+      await addBidShares(auction, defaultTokenId, defaultBidShares);
+
       await expect(
-        setAsk(auction, 1, {
+        setAsk(auction, defaultTokenId, {
           amount: 1,
           currency: AddressZero,
-          currencyDecimals: 18,
         })
       ).rejectedWith(
         revert('InvertAuction: Ask too small for share splitting')
@@ -234,7 +259,7 @@ describe('InvertAuction', () => {
 
     it("should reject if the bid shares haven't been set yet", async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await expect(setAsk(auction)).rejectedWith(
+      await expect(setAsk(auction, defaultTokenId, defaultAsk)).rejectedWith(
         revert('InvertAuction: Invalid bid shares for token')
       );
     });
@@ -245,7 +270,6 @@ describe('InvertAuction', () => {
     const defaultBid = {
       amount: 100,
       currency: currency,
-      currencyDecimals: 18,
       bidder: bidderWallet.address,
     };
 
@@ -258,82 +282,146 @@ describe('InvertAuction', () => {
 
     it('should revert if not called by the token contract', async () => {
       const auction = await auctionAs(otherWallet);
-      await expect(setBid(auction, defaultBid)).rejectedWith(
+      await expect(setBid(auction, defaultBid, defaultTokenId)).rejectedWith(
         revert('InvertAuction: Only token contract')
       );
     });
+
     it('should revert if the bidder does not have a high enough allowance for their bidding currency', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await expect(setBid(auction, defaultBid)).rejectedWith(
+      await expect(setBid(auction, defaultBid, defaultTokenId)).rejectedWith(
         revert('InvertAuction: allowance not high enough to transfer token.')
       );
     });
+
     it('should revert if the bidder does not have enough tokens to bid with', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await mintCurrency(currency, defaultBid.bidder);
+      await mintCurrency(currency, defaultBid.bidder, defaultBid.amount-1);
+      await approveCurrency(currency, auction.address, bidderWallet);
 
-      await expect(setBid(auction, defaultBid)).rejectedWith(
-        revert('InvertAuction: allowance not high enough to transfer token.')
+      await expect(setBid(auction, defaultBid, defaultTokenId)).rejectedWith(
+        revert("InvertAuction: Not enough funds to transfer token.")
       );
     });
+
     it('should revert if the bid does not have bid shares set yet', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await mintCurrency(currency, defaultBid.bidder);
+      await mintCurrency(currency, defaultBid.bidder, defaultBid.amount);
       await approveCurrency(currency, auction.address, bidderWallet);
-      await expect(setBid(auction, defaultBid)).rejectedWith(
+      await expect(setBid(auction, defaultBid, defaultTokenId)).rejectedWith(
         revert('InvertAuction: Invalid bid shares for token')
       );
     });
 
-    it('should revert if the bid is not valid', async () => {
-      const invalidBid = { ...defaultBid, amount: 101 };
+    it('should revert if the bid is smaller than the min bid', async () => {
+      const invalidBid = { ...defaultBid, amount: 99 };
       const auction = await auctionAs(mockTokenWallet);
-      await addBidShares(auction);
-      await mintCurrency(currency, defaultBid.bidder);
+      await addBidShares(auction, defaultTokenId, defaultBidShares);
+      await mintCurrency(currency, defaultBid.bidder, defaultBid.amount);
       await approveCurrency(currency, auction.address, bidderWallet);
-      await expect(setBid(auction, invalidBid)).rejectedWith(
-        'InvertAuction: Bid invalid for share splitting'
+      await expect(setBid(auction, invalidBid, defaultTokenId)).rejectedWith(
+        revert('InvertAuction: Bid invalid for share splitting')
+      );
+    });
+
+    it('should revert if the bid is greater than the min bid, but cannot be divided by it evenly', async () => {
+      const invalidBid = { ...defaultBid, amount: defaultBid.amount + 1};
+      const auction = await auctionAs(mockTokenWallet);
+      await addBidShares(auction, defaultTokenId, defaultBidShares);
+      await mintCurrency(currency, defaultBid.bidder, defaultBid.amount + 1);
+      await approveCurrency(currency, auction.address, bidderWallet);
+      await expect(setBid(auction, invalidBid, defaultTokenId)).rejectedWith(
+        revert('InvertAuction: Bid invalid for share splitting')
       );
     });
 
     it('should accept a valid bid', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await addBidShares(auction);
-      await mintCurrency(currency, defaultBid.bidder);
+      await addBidShares(auction, defaultTokenId, defaultBidShares);
+      await mintCurrency(currency, defaultBid.bidder, defaultBid.amount);
       await approveCurrency(currency, auction.address, bidderWallet);
 
-      const beforeBalance = toNum(
+      const beforeBalance = toNumWei(
         await getBalance(currency, defaultBid.bidder)
       );
 
-      await expect(setBid(auction, defaultBid)).fulfilled;
+      await expect(setBid(auction, defaultBid, defaultTokenId)).fulfilled;
 
-      const afterBalance = toNum(await getBalance(currency, defaultBid.bidder));
+      const afterBalance = toNumWei(await getBalance(currency, defaultBid.bidder));
       const bid = await auction.bidForTokenBidder(1, bidderWallet.address);
       expect(bid.currency).eq(currency);
-      expect(toNum(bid.amount)).eq(defaultBid.amount);
+      expect(toNumWei(bid.amount)).eq(defaultBid.amount);
       expect(bid.bidder).eq(defaultBid.bidder);
       expect(beforeBalance).eq(afterBalance + defaultBid.amount);
     });
 
-    it('should refund the original bid if the bidder bids again', async () => {
+    it('should accept a valid bid larger than the min bid', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await addBidShares(auction);
-      await mintCurrency(currency, defaultBid.bidder);
+      await addBidShares(auction, defaultTokenId, defaultBidShares);
+
+      const largerValidBid = {
+        amount: 130000000,
+        currency: currency,
+        bidder: bidderWallet.address,
+      }
+
+      await mintCurrency(currency, largerValidBid.bidder, largerValidBid.amount);
       await approveCurrency(currency, auction.address, bidderWallet);
 
-      const bidderBalance = toNum(
+      const beforeBalance = toNumWei(
+        await getBalance(currency, defaultBid.bidder)
+      );
+
+      await expect(setBid(auction, largerValidBid, defaultTokenId)).fulfilled;
+
+      const afterBalance = toNumWei(await getBalance(currency, largerValidBid.bidder));
+      const bid = await auction.bidForTokenBidder(1, bidderWallet.address);
+      expect(bid.currency).eq(currency);
+      expect(toNumWei(bid.amount)).eq(largerValidBid.amount);
+      expect(bid.bidder).eq(largerValidBid.bidder);
+      expect(beforeBalance).eq(afterBalance + largerValidBid.amount);
+    });
+
+    it('should revert if the bidder bids again but the bid is invalid', async () => {
+      const auction = await auctionAs(mockTokenWallet);
+      await addBidShares(auction, defaultTokenId, defaultBidShares);
+      await mintCurrency(currency, defaultBid.bidder, 5000);
+      await approveCurrency(currency, auction.address, bidderWallet);
+
+      await setBid(auction, defaultBid, defaultTokenId);
+
+      await expect(
+        setBid(
+          auction,
+          { ...defaultBid, amount: defaultBid.amount - 1 },
+          defaultTokenId
+        )
+      ).rejectedWith(
+        revert('InvertAuction: Bid invalid for share splitting')
+      );
+    })
+
+    it('should refund the original bid if the bidder bids again', async () => {
+      const auction = await auctionAs(mockTokenWallet);
+      await addBidShares(auction, defaultTokenId, defaultBidShares);
+      await mintCurrency(currency, defaultBid.bidder, 5000);
+      await approveCurrency(currency, auction.address, bidderWallet);
+
+      const bidderBalance = toNumWei(
         await BaseErc20Factory.connect(currency, bidderWallet).balanceOf(
           bidderWallet.address
         )
       );
 
-      await setBid(auction, defaultBid);
+      await setBid(auction, defaultBid, defaultTokenId);
       await expect(
-        setBid(auction, { ...defaultBid, amount: defaultBid.amount * 2 })
+        setBid(
+          auction,
+          { ...defaultBid, amount: defaultBid.amount * 2 },
+          defaultTokenId)
       ).fulfilled;
 
-      const afterBalance = toNum(
+      const afterBalance = toNumWei(
         await BaseErc20Factory.connect(currency, bidderWallet).balanceOf(
           bidderWallet.address
         )
