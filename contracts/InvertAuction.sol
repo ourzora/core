@@ -136,7 +136,7 @@ contract InvertAuction {
         onlyTokenCaller
     {
         require(
-            minBidForToken(tokenId) <= ask.amount,
+            isValidBid(tokenId, ask.amount),
             "InvertAuction: Ask too small for share splitting"
         );
         _tokenAsks[tokenId] = ask;
@@ -152,10 +152,13 @@ contract InvertAuction {
         onlyTokenCaller
         onlyTransferAllowanceAndSolvent(bid.bidder, bid.currency, bid.amount)
     {
-        // TODO: validate bidder is not ZeroAddress
         require(
-            minBidForToken(tokenId) <= bid.amount,
-            "InvertAuction: Bid too small for share splitting"
+            isValidBid(tokenId, bid.amount),
+            "InvertAuction: Bid invalid for share splitting"
+        );
+        require(
+            bid.bidder != address(0),
+            "InvertAuction: Bidder cannot be 0 address"
         );
 
         Bid storage existingBid = _tokenBidders[tokenId][bid.bidder];
@@ -207,6 +210,14 @@ contract InvertAuction {
         require(bid.amount > 0, "InvertAuction: cannot accept bid of 0");
 
         _finalizeNFTTransfer(tokenId, bidder);
+    }
+
+    function isValidBid(uint256 tokenId, uint256 bidAmount)
+        public
+        view
+        returns (bool)
+    {
+        return (bidAmount % minBidForToken(tokenId)) == 0;
     }
 
     /**
