@@ -17,7 +17,7 @@ contract InvertAuction {
 
     uint256 constant ONE_HUNDRED = 100;
 
-    address private _tokenContract;
+    address public tokenContract;
     address private _owner;
     bool private _configured;
 
@@ -39,7 +39,7 @@ contract InvertAuction {
     }
 
     modifier onlyTokenCaller() {
-        require(_tokenContract == msg.sender, "InvertAuction: Only token contract");
+        require(tokenContract == msg.sender, "InvertAuction: Only token contract");
         _;
     }
 
@@ -48,11 +48,11 @@ contract InvertAuction {
         _configured = false;
     }
 
-    function configure(address tokenContract) public {
+    function configure(address tokenContractAddress) public {
         require(msg.sender == _owner, "InvertAuction: Only owner");
         require(_configured == false, "InvertAuction: Already configured");
 
-        _tokenContract = tokenContract;
+        tokenContract = tokenContractAddress;
         _configured = true;
     }
 
@@ -64,8 +64,7 @@ contract InvertAuction {
         uint256 tokenId,
         address owner,
         uint256 amount,
-        address currency,
-        uint256 currencyDecimals
+        address currency
     );
 
     struct Bid {
@@ -73,8 +72,6 @@ contract InvertAuction {
         uint256 amount;
         // Address to the ERC20 token being used to bid
         address currency;
-        // Number of decimals on the ERC20 token
-        uint256 currencyDecimals;
         // Address of the bidder
         address bidder;
     }
@@ -84,8 +81,6 @@ contract InvertAuction {
         uint256 amount;
         // Address to the ERC20 token being asked
         address currency;
-        // Number of decimals on the ERC20 token
-        uint256 currencyDecimals;
     }
 
     struct BidShares {
@@ -169,7 +164,7 @@ contract InvertAuction {
 
         IERC20 token = IERC20(bid.currency);
         require(token.transferFrom(bid.bidder, address(this), bid.amount), "InvertAuction: transfer failed");
-        _tokenBidders[tokenId][bid.bidder] = Bid(bid.amount, bid.currency, bid.currencyDecimals, bid.bidder);
+        _tokenBidders[tokenId][bid.bidder] = Bid(bid.amount, bid.currency, bid.bidder);
 
         // If the bid is over the ask price and the currency is the same, automatically accept the bid
         if (bid.currency == _tokenAsks[tokenId].currency && bid.amount >= _tokenAsks[tokenId].amount) {
@@ -284,11 +279,11 @@ contract InvertAuction {
 
         IERC20 token = IERC20(bid.currency);
 
-        require(token.transfer(IERC721(_tokenContract).ownerOf(tokenId), _splitShare(bidShares.owner, bid)), "InvertAuction: token transfer to owner failed");
-        require(token.transfer(InvertToken(_tokenContract).tokenCreator(tokenId), _splitShare(bidShares.creator, bid)), "InvertAuction: token transfer to creator failed");
-        require(token.transfer(InvertToken(_tokenContract).tokenPreviousOwner(tokenId), _splitShare(bidShares.prevOwner, bid)), "InvertAuction: token transfer to prevOwner failed");
+        require(token.transfer(IERC721(tokenContract).ownerOf(tokenId), _splitShare(bidShares.owner, bid)), "InvertAuction: token transfer to owner failed");
+        require(token.transfer(InvertToken(tokenContract).tokenCreator(tokenId), _splitShare(bidShares.creator, bid)), "InvertAuction: token transfer to creator failed");
+        require(token.transfer(InvertToken(tokenContract).tokenPreviousOwner(tokenId), _splitShare(bidShares.prevOwner, bid)), "InvertAuction: token transfer to prevOwner failed");
 
-        InvertToken(_tokenContract).auctionTransfer(tokenId, bidder);
+        InvertToken(tokenContract).auctionTransfer(tokenId, bidder);
 
         delete _tokenAsks[tokenId];
         delete _tokenBidders[tokenId][bidder];
