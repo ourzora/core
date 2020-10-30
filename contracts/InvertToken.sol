@@ -33,7 +33,6 @@ contract InvertToken is ERC721Burnable {
         uint256 currencyDecimals
     );
 
-
     modifier onlyExistingToken (uint256 tokenId) {
         require(_exists(tokenId), "InvertToken: Nonexistant token");
         _;

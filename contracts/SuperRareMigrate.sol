@@ -1,9 +1,12 @@
 pragma solidity 0.6.8;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "/interfaces/IZoraMigrate.sol";
-import "/interfaces/ICreatorMigrationStorage";
+import "./interfaces/IZoraMigrate.sol";
+import "./interfaces/ICreatorMigrationStorage.sol";
+import "./interfaces/IInvertToken.sol";
+//import "./InvertToken.sol";
 
 
 /**
@@ -13,44 +16,73 @@ import "/interfaces/ICreatorMigrationStorage";
 */
 
 interface ISuperRareV2 {
-    function safeTransferFrom(address from, address to, uint256 tokenId) public;
-    function deleteToken(uint256 tokenId) public;
+    function safeTransferFrom(address from, address to, uint256 tokenId) external;
+    function deleteToken(uint256 tokenId) external;
+    function tokenURI(uint256 tokenId) external view returns (string memory);
+    function tokenCreator(uint256 tokenId) external view returns (address);
 }
 
 contract SuperRareMigrate is IZoraMigrate, IERC721Receiver {
 
-    address private _storage;
-    address private _invert;
+    struct PartialBidShares {
+        // % of sale value that goes to the _previous_ owner of the nft
+        Decimal.D256 prevOwner;
 
+        // % of sale value that goes to the seller (current owner) of the nft
+        Decimal.D256 owner;
+    }
+
+    ICreatorMigrationStorage private _storage;
+    IInvertToken private _invert;
     bytes4 private constant _ERC721_RECEIVED = 0x150b7a02;
+    Decimal.D256 private defaultCreatorShare = Decimal.D256({value: 10000000000000000000});
 
-    constructor(address storageAddress) {
-        _storage = storageAddress;
+    constructor(address storageAddress, address invertAddress) public {
+        _storage = ICreatorMigrationStorage(storageAddress);
+        _invert = IInvertToken(invertAddress);
     }
 
     modifier onlyOwnerAndAllowance(address owner, address tokenAddress, uint256 tokenId) {
         IERC721 token = IERC721(tokenAddress);
         require(owner == token.ownerOf(tokenId), "you do not own this NFT");
         require(token.getApproved(tokenId) == address(this), 'you must approve() this contract to give it permission to withdraw this nft');
+        _;
     }
 
-    function migrate(address tokenAddress, uint256 tokenId, creatorAddress) external {
-        ISuperRareV2 token = ISuperRareV2(tokenAddress);
+    function migrate(address tokenAddress, uint256 tokenId, address creatorAddress, PartialBidShares calldata pbs)
+        external
+        override
+        onlyOwnerAndAllowance(msg.sender, tokenAddress, tokenId)
+    {
+        ISuperRareV2 superRare = ISuperRareV2(tokenAddress);
 
         // require that creator has approved
-        address creator = token.tokenCreator(tokenId);
-        require(ICreatorMigrateStorage(_storage).isApproved(creator), "creator has not yet approved migration");
+        address creator = superRare.tokenCreator(tokenId);
+        require(_storage.isApproved(creator), "creator has not yet approved migration");
 
         // do a transferFrom
-        token.safeTransferFrom(msg.sender, address(this), tokenId, "");
+        superRare.safeTransferFrom(msg.sender, address(this), tokenId);
 
-        // do a burn
-        token.deleteToken(tokenId);
+        // fetch the tokenURI
+        string memory tokenURI = superRare.tokenURI(tokenId);
+
+        InvertAuction.BidShares memory bidShare = InvertAuction.BidShares({
+            creator: defaultCreatorShare,
+            owner: pbs.owner,
+            prevOwner: pbs.prevOwner
+        });
 
         // do a mint
+        _invert.mint(creator, tokenURI, bidShare);
+
+        // do a burn
+        superRare.deleteToken(tokenId);
     }
 
-    function onERC721Received(address, uint256, bytes) public returns(bytes4) {
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes memory data)
+        public
+        override
+        returns(bytes4) {
         return _ERC721_RECEIVED;
     }
 }
