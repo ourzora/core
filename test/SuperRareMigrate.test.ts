@@ -1,12 +1,14 @@
 import { generatedWallets } from '../utils/generatedWallets';
 import { Blockchain } from '../utils/Blockchain';
 
-import { JsonRpcProvider } from 'ethers/providers';
+import { JsonRpcProvider } from '@ethersproject/providers';
 import chai, { expect } from 'chai';
 import asPromised from 'chai-as-promised';
 import { SuperRareMigrateFactory } from '../typechain/SuperRareMigrateFactory';
 import { CreatorMigrationStorageFactory } from '../typechain/CreatorMigrationStorageFactory';
-import { Erc721Factory } from '../typechain/Erc721Factory';
+import { AddressZero } from '@ethersproject/constants';
+
+import { SuperRareV2Factory } from '../typechain';
 
 
 chai.use(asPromised);
@@ -16,6 +18,7 @@ let blockchain = new Blockchain(provider);
 let superRareMigrateAddress: string;
 let storageContractAddress: string;
 let invertContractAddress: string;
+let superRareV2ContractAddress: string;
 
 describe("SuperRareMigrate", () => {
   let [
@@ -47,10 +50,13 @@ describe("SuperRareMigrate", () => {
     invertContractAddress = invertContract.address;
   }
 
-  async function deployERC721(){
-    // const dummyERC721 = await new Erc721Factory(deployerWallet).deploy(
-    //   "SuperRareV2"
-    // )
+  async function deploySuperRareV2(){
+    const superRare = await new SuperRareV2Factory(deployerWallet).deploy(
+      "test",
+      "TEST",
+      AddressZero,
+    )
+    superRareV2ContractAddress = superRare.address;
   }
 
   beforeEach(async () => {
@@ -77,7 +83,7 @@ describe("SuperRareMigrate", () => {
         storageContractAddress,
         invertContractAddress
       );
-
+      await deploySuperRareV2();
     });
 
     it(" reverts if the specified tokenAddress is not an ERC721", async () => {
@@ -100,8 +106,5 @@ describe("SuperRareMigrate", () => {
 
     });
 
-  });
-
-  describe("#onERC721Approved", () => {
   });
 });

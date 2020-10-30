@@ -1,13 +1,14 @@
 import chai, { expect } from 'chai';
 import asPromised from 'chai-as-promised';
-import { JsonRpcProvider } from 'ethers/providers';
+import { JsonRpcProvider } from '@ethersproject/providers';
 import { Blockchain } from '../utils/Blockchain';
 import { generatedWallets } from '../utils/generatedWallets';
 import { InvertAuctionFactory } from '../typechain/InvertAuctionFactory';
 import { Wallet } from 'ethers';
 import Decimal from '../utils/Decimal';
-import { BigNumber, BigNumberish, formatUnits } from 'ethers/utils';
-import { AddressZero, MaxUint256 } from 'ethers/constants';
+import { BigNumber, BigNumberish } from 'ethers';
+import { formatUnits } from '@ethersproject/units';
+import { AddressZero, MaxUint256 } from '@ethersproject/constants';
 import { BaseErc20Factory } from '../typechain/BaseErc20Factory';
 import { InvertAuction } from '../typechain/InvertAuction';
 

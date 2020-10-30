@@ -1,9 +1,9 @@
 import { generatedWallets, signMessage } from '../utils/generatedWallets';
 import { Blockchain } from '../utils/Blockchain';
 import { Wallet } from 'ethers';
-import { Arrayish} from 'ethers/utils';
+import { Bytes } from 'ethers';
 
-import { JsonRpcProvider } from 'ethers/providers';
+import { JsonRpcProvider } from '@ethersproject/providers';
 import chai, { expect } from 'chai';
 import asPromised from 'chai-as-promised';
 import { CreatorMigrationStorage } from '../typechain/CreatorMigrationStorage';
@@ -29,7 +29,7 @@ describe("CreatorMigrationStorage", () => {
     storageContractAddress = storageContract.address;
   }
 
-  async function submitApproval(wallet: Wallet, creatorAddress: string, signature: Arrayish){
+  async function submitApproval(wallet: Wallet, creatorAddress: string, signature: Bytes){
     return CreatorMigrationStorageFactory.connect(
       storageContractAddress,
       wallet

@@ -20,7 +20,6 @@ export function generatedWallets(provider: ethers.providers.BaseProvider) {
 
 export async function signMessage(message: string, wallet: ethers.Wallet) {
   const messageHash = ethers.utils.id(message);
-  console.log(messageHash);
   const messageHashBytes = ethers.utils.arrayify(messageHash)
   const flatSig = await wallet.signMessage(messageHashBytes);
   return ethers.utils.arrayify(flatSig);

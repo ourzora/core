@@ -9,7 +9,7 @@
     "start": "next start",
     "test": "hardhat test",
     "compile": "hardhat clean && hardhat compile",
-    "typechain": "rm -rf ./typechain && typechain --show-stack-traces --target ethers --outDir ./typechain 'artifacts/**/*.json'",
+    "typechain": "rm -rf ./typechain && typechain --show-stack-traces --target ethers --outDir ./typechain 'artifacts/!(build-info)/**/!(*.dbg*)*.json'",
     "build:contracts": "yarn compile && yarn typechain",
     "chain": "ganache-cli --networkId 50 --accounts 20 -l 19000000 -e 10000000000 -m 'concert load couple harbor equip island argue ramp clarify fence smart topic'",
     "watch": "ts-node scripts/watch.ts"
@@ -44,7 +44,7 @@
     "chokidar": "^3.4.3",
     "dotenv": "^8.2.0",
     "ethereum-waffle": "^2.3.0",
-    "ethers": "4",
+    "ethers": "^5.0.19",
     "fs-extra": "^9.0.1",
     "ganache-cli": "^6.12.0",
     "minimist": "^1.2.5",
