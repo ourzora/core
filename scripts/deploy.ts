@@ -1,5 +1,5 @@
 import fs from 'fs-extra';
-import { JsonRpcProvider } from 'ethers/providers';
+import { JsonRpcProvider } from '@ethersproject/providers';
 import { Wallet } from 'ethers';
 import { InvertFactory } from '../typechain/InvertFactory';
 

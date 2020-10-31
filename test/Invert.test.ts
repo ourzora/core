@@ -3,14 +3,15 @@ import { Blockchain } from '../utils/Blockchain';
 
 import { Invert } from '../typechain/Invert';
 import { InvertFactory } from '../typechain/InvertFactory';
-import { JsonRpcProvider } from 'ethers/providers';
+import { JsonRpcProvider } from '@ethersproject/providers';
 import chai, { expect } from 'chai';
 import asPromised from 'chai-as-promised';
 import { Wallet } from 'ethers';
-import { BigNumber, bigNumberify, formatUnits, parseUnits } from 'ethers/utils';
+import { formatUnits } from '@ethersproject/units';
+import { BigNumber } from 'ethers';
 import { Ierc20 } from '../typechain/Ierc20';
 import { BaseErc20Factory } from '../typechain/BaseErc20Factory';
-import { AddressZero } from 'ethers/constants';
+import { AddressZero } from '@ethersproject/constants';
 import Decimal from '../utils/Decimal';
 import Base = Mocha.reporters.Base;
 
