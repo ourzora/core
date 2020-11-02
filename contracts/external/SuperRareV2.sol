@@ -1020,25 +1020,16 @@ contract SuperRareV2 is ERC721Full, IERC721Creator, Ownable, Whitelist {
     // Counter for creating token IDs
     uint256 private idCounter;
 
-    // Old SuperRare contract to look up token details.
-    ISuperRare private oldSuperRare;
-
     // Event indicating metadata was updated.
     event TokenURIUpdated(uint256 indexed _tokenId, string  _uri);
 
     constructor(
         string _name,
-        string _symbol,
-        address _oldSuperRare
+        string _symbol
     )
     ERC721Full(_name, _symbol)
     {
-        // Get reference to old SR contract.
-        oldSuperRare = ISuperRare(_oldSuperRare);
-
-        uint256 oldSupply = oldSuperRare.totalSupply();
-        // Set id counter to be continuous with SuperRare.
-        idCounter = oldSupply + 1;
+        idCounter = 0;
     }
 
     /**

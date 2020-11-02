@@ -13,15 +13,16 @@ const config: HardhatUserConfig = {
     compilers: [
       {
         version: '0.6.8',
-      },
-      {
-        version: '0.4.24',
+        settings: {
+          optimizer: {
+            enabled: true,
+          },
+        },
       },
     ],
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 200,
+    overrides: {
+      "contracts/external/SuperRareV2.sol":  {
+        version: "0.4.24",
       },
     },
   },

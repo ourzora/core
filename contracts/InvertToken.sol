@@ -9,7 +9,7 @@ import {SafeMath} from "@openzeppelin/contracts-ethereum-package/contracts/math/
 import {Math} from "@openzeppelin/contracts-ethereum-package/contracts/math/Math.sol";
 import {IERC20} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 import {Decimal} from "./Decimal.sol";
-import "./InvertAuction.sol";
+import {InvertAuction} from "./InvertAuction.sol";
 
 contract InvertToken is ERC721Burnable {
     using Counters for Counters.Counter;

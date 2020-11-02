@@ -1,7 +1,7 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 
-import "../InvertAuction.sol";
+import {InvertAuction} from "../InvertAuction.sol";
 
 interface IInvertToken {
     function mint(address creator, string calldata tokenURI, InvertAuction.BidShares calldata bidShares) external;
