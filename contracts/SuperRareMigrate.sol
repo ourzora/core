@@ -1,11 +1,13 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "./interfaces/IZoraMigrate.sol";
-import "./interfaces/ICreatorMigrationStorage.sol";
-import "./interfaces/IInvertToken.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {IZoraMigrate} from "./interfaces/IZoraMigrate.sol";
+import {ICreatorMigrationStorage} from "./interfaces/ICreatorMigrationStorage.sol";
+import {IInvertToken} from "./interfaces/IInvertToken.sol";
+import {Decimal} from "./Decimal.sol";
+import {InvertAuction} from "./InvertAuction.sol";
 //import "./InvertToken.sol";
 
 

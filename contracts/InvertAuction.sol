@@ -212,7 +212,7 @@ contract InvertAuction {
         view
         returns (bool)
     {
-        return (bidAmount % minBidForToken(tokenId)) == 0;
+        return bidAmount != 0 && ((bidAmount % minBidForToken(tokenId)) == 0);
     }
 
     /**
@@ -270,7 +270,7 @@ contract InvertAuction {
     }
 
     function _splitShare(Decimal.D256 memory sharePercentage, Bid memory bid) public pure returns (uint256) {
-        return Decimal.mul(bid.amount, sharePercentage).div(uint256(100).mul(Decimal.BASE));
+        return Decimal.mul(bid.amount, sharePercentage).div(100);
     }
 
     function _finalizeNFTTransfer(uint256 tokenId, address bidder) internal {
@@ -280,8 +280,8 @@ contract InvertAuction {
         IERC20 token = IERC20(bid.currency);
 
         require(token.transfer(IERC721(tokenContract).ownerOf(tokenId), _splitShare(bidShares.owner, bid)), "InvertAuction: token transfer to owner failed");
-        require(token.transfer(InvertToken(tokenContract).tokenCreator(tokenId), _splitShare(bidShares.creator, bid)), "InvertAuction: token transfer to creator failed");
-        require(token.transfer(InvertToken(tokenContract).tokenPreviousOwner(tokenId), _splitShare(bidShares.prevOwner, bid)), "InvertAuction: token transfer to prevOwner failed");
+        require(token.transfer(InvertToken(tokenContract).tokenCreators(tokenId), _splitShare(bidShares.creator, bid)), "InvertAuction: token transfer to creator failed");
+        require(token.transfer(InvertToken(tokenContract).previousTokenOwners(tokenId), _splitShare(bidShares.prevOwner, bid)), "InvertAuction: token transfer to prevOwner failed");
 
         InvertToken(tokenContract).auctionTransfer(tokenId, bidder);
 

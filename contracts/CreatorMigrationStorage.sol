@@ -1,6 +1,6 @@
 pragma solidity 0.6.8;
 
-import "@openzeppelin/contracts/cryptography/ECDSA.sol";
+import {ECDSA} from "@openzeppelin/contracts/cryptography/ECDSA.sol";
 
 contract CreatorMigrationStorage {
 

@@ -58,9 +58,6 @@ describe('InvertAuction', () => {
 
   let auctionAddress: string;
 
-  function revert(message: string) {
-    return `VM Exception while processing transaction: revert ${message}`;
-  }
   function toNumWei(val: BigNumber) {
     return parseFloat(formatUnits(val, 'wei'));
   }
@@ -151,11 +148,10 @@ describe('InvertAuction', () => {
 
     it('should revert if not called by the owner', async () => {
       await expect(
-        InvertAuctionFactory.connect(auctionAddress, otherWallet)
-          .configure(
-            mockTokenWallet.address
-          )
-      ).eventually.rejectedWith(revert('InvertAuction: Only owner'));
+        InvertAuctionFactory.connect(auctionAddress, otherWallet).configure(
+          mockTokenWallet.address
+        )
+      ).eventually.rejected;
     });
 
     it('should be callable by the owner', async () => {
@@ -168,9 +164,7 @@ describe('InvertAuction', () => {
     it('should reject if called twice', async () => {
       await configure();
 
-      await expect(configure()).eventually.rejectedWith(
-        revert('InvertAuction: Already configured')
-      );
+      await expect(configure()).eventually.rejected;
     });
   });
 
@@ -178,26 +172,28 @@ describe('InvertAuction', () => {
     beforeEach(async () => {
       await deploy();
       await configure();
-     });
+    });
 
     it('should reject if not called by the token address', async () => {
       const auction = await auctionAs(otherWallet);
 
-      await expect(addBidShares(auction, defaultTokenId, defaultBidShares)).rejectedWith(
-        revert('InvertAuction: Only token contract')
-      );
+      await expect(addBidShares(auction, defaultTokenId, defaultBidShares))
+        .rejected;
     });
 
     it('should set the bid shares if called by the token address', async () => {
       const auction = await auctionAs(mockTokenWallet);
 
-      await expect(addBidShares(auction, defaultTokenId, defaultBidShares)).eventually.fulfilled;
+      await expect(addBidShares(auction, defaultTokenId, defaultBidShares))
+        .eventually.fulfilled;
 
       const tokenBidShares = Object.values(
         await auction.bidSharesForToken(defaultTokenId)
       ).map((s) => parseInt(formatUnits(s.value, 'ether')));
 
-      expect(tokenBidShares[0]).eq(toNumEther(defaultBidShares.prevOwner.value));
+      expect(tokenBidShares[0]).eq(
+        toNumEther(defaultBidShares.prevOwner.value)
+      );
       expect(tokenBidShares[1]).eq(toNumEther(defaultBidShares.creator.value));
       expect(tokenBidShares[2]).eq(toNumEther(defaultBidShares.owner.value));
     });
@@ -208,13 +204,10 @@ describe('InvertAuction', () => {
         prevOwner: Decimal.new(0),
         owner: Decimal.new(0),
         creator: Decimal.new(101),
-      }
+      };
 
-      await expect(
-        addBidShares(auction, defaultTokenId, invalidBidShares)
-      ).rejectedWith(
-        revert('InvertAuction: Invalid bid shares, must sum to 100')
-      );
+      await expect(addBidShares(auction, defaultTokenId, invalidBidShares))
+        .rejected;
     });
   });
 
@@ -227,16 +220,15 @@ describe('InvertAuction', () => {
     it('should reject if not called by the token address', async () => {
       const auction = await auctionAs(otherWallet);
 
-      await expect(setAsk(auction, defaultTokenId, defaultAsk)).rejectedWith(
-        revert('InvertAuction: Only token contract')
-      );
+      await expect(setAsk(auction, defaultTokenId, defaultAsk)).rejected;
     });
 
     it('should set the ask if called by the token address', async () => {
       const auction = await auctionAs(mockTokenWallet);
       await addBidShares(auction, defaultTokenId, defaultBidShares);
 
-      await expect(setAsk(auction, defaultTokenId, defaultAsk)).eventually.fulfilled;
+      await expect(setAsk(auction, defaultTokenId, defaultAsk)).eventually
+        .fulfilled;
 
       const ask = await auction.currentAskForToken(defaultTokenId);
 
@@ -253,16 +245,12 @@ describe('InvertAuction', () => {
           amount: 1,
           currency: AddressZero,
         })
-      ).rejectedWith(
-        revert('InvertAuction: Ask too small for share splitting')
-      );
+      ).rejected;
     });
 
     it("should reject if the bid shares haven't been set yet", async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await expect(setAsk(auction, defaultTokenId, defaultAsk)).rejectedWith(
-        revert('InvertAuction: Invalid bid shares for token')
-      );
+      await expect(setAsk(auction, defaultTokenId, defaultAsk)).rejected;
     });
   });
 
@@ -283,35 +271,27 @@ describe('InvertAuction', () => {
 
     it('should revert if not called by the token contract', async () => {
       const auction = await auctionAs(otherWallet);
-      await expect(setBid(auction, defaultBid, defaultTokenId)).rejectedWith(
-        revert('InvertAuction: Only token contract')
-      );
+      await expect(setBid(auction, defaultBid, defaultTokenId)).rejected;
     });
 
     it('should revert if the bidder does not have a high enough allowance for their bidding currency', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await expect(setBid(auction, defaultBid, defaultTokenId)).rejectedWith(
-        revert('InvertAuction: allowance not high enough to transfer token.')
-      );
+      await expect(setBid(auction, defaultBid, defaultTokenId)).rejected;
     });
 
     it('should revert if the bidder does not have enough tokens to bid with', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await mintCurrency(currency, defaultBid.bidder, defaultBid.amount-1);
+      await mintCurrency(currency, defaultBid.bidder, defaultBid.amount - 1);
       await approveCurrency(currency, auction.address, bidderWallet);
 
-      await expect(setBid(auction, defaultBid, defaultTokenId)).rejectedWith(
-        revert("InvertAuction: Not enough funds to transfer token.")
-      );
+      await expect(setBid(auction, defaultBid, defaultTokenId)).rejected;
     });
 
     it('should revert if the bid does not have bid shares set yet', async () => {
       const auction = await auctionAs(mockTokenWallet);
       await mintCurrency(currency, defaultBid.bidder, defaultBid.amount);
       await approveCurrency(currency, auction.address, bidderWallet);
-      await expect(setBid(auction, defaultBid, defaultTokenId)).rejectedWith(
-        revert('InvertAuction: Invalid bid shares for token')
-      );
+      await expect(setBid(auction, defaultBid, defaultTokenId)).rejected;
     });
 
     it('should revert if the bid is smaller than the min bid', async () => {
@@ -320,20 +300,16 @@ describe('InvertAuction', () => {
       await addBidShares(auction, defaultTokenId, defaultBidShares);
       await mintCurrency(currency, defaultBid.bidder, defaultBid.amount);
       await approveCurrency(currency, auction.address, bidderWallet);
-      await expect(setBid(auction, invalidBid, defaultTokenId)).rejectedWith(
-        revert('InvertAuction: Bid invalid for share splitting')
-      );
+      await expect(setBid(auction, invalidBid, defaultTokenId)).rejected;
     });
 
     it('should revert if the bid is greater than the min bid, but cannot be divided by it evenly', async () => {
-      const invalidBid = { ...defaultBid, amount: defaultBid.amount + 1};
+      const invalidBid = { ...defaultBid, amount: defaultBid.amount + 1 };
       const auction = await auctionAs(mockTokenWallet);
       await addBidShares(auction, defaultTokenId, defaultBidShares);
       await mintCurrency(currency, defaultBid.bidder, defaultBid.amount + 1);
       await approveCurrency(currency, auction.address, bidderWallet);
-      await expect(setBid(auction, invalidBid, defaultTokenId)).rejectedWith(
-        revert('InvertAuction: Bid invalid for share splitting')
-      );
+      await expect(setBid(auction, invalidBid, defaultTokenId)).rejected;
     });
 
     it('should accept a valid bid', async () => {
@@ -348,7 +324,9 @@ describe('InvertAuction', () => {
 
       await expect(setBid(auction, defaultBid, defaultTokenId)).fulfilled;
 
-      const afterBalance = toNumWei(await getBalance(currency, defaultBid.bidder));
+      const afterBalance = toNumWei(
+        await getBalance(currency, defaultBid.bidder)
+      );
       const bid = await auction.bidForTokenBidder(1, bidderWallet.address);
       expect(bid.currency).eq(currency);
       expect(toNumWei(bid.amount)).eq(defaultBid.amount);
@@ -364,9 +342,13 @@ describe('InvertAuction', () => {
         amount: 130000000,
         currency: currency,
         bidder: bidderWallet.address,
-      }
+      };
 
-      await mintCurrency(currency, largerValidBid.bidder, largerValidBid.amount);
+      await mintCurrency(
+        currency,
+        largerValidBid.bidder,
+        largerValidBid.amount
+      );
       await approveCurrency(currency, auction.address, bidderWallet);
 
       const beforeBalance = toNumWei(
@@ -375,7 +357,9 @@ describe('InvertAuction', () => {
 
       await expect(setBid(auction, largerValidBid, defaultTokenId)).fulfilled;
 
-      const afterBalance = toNumWei(await getBalance(currency, largerValidBid.bidder));
+      const afterBalance = toNumWei(
+        await getBalance(currency, largerValidBid.bidder)
+      );
       const bid = await auction.bidForTokenBidder(1, bidderWallet.address);
       expect(bid.currency).eq(currency);
       expect(toNumWei(bid.amount)).eq(largerValidBid.amount);
@@ -397,10 +381,8 @@ describe('InvertAuction', () => {
           { ...defaultBid, amount: defaultBid.amount - 1 },
           defaultTokenId
         )
-      ).rejectedWith(
-        revert('InvertAuction: Bid invalid for share splitting')
-      );
-    })
+      ).rejected;
+    });
 
     it('should refund the original bid if the bidder bids again', async () => {
       const auction = await auctionAs(mockTokenWallet);
@@ -419,7 +401,8 @@ describe('InvertAuction', () => {
         setBid(
           auction,
           { ...defaultBid, amount: defaultBid.amount * 2 },
-          defaultTokenId)
+          defaultTokenId
+        )
       ).fulfilled;
 
       const afterBalance = toNumWei(
