@@ -559,10 +559,9 @@ describe('InvertToken', () => {
   });
 
   describe("#tokenContentHash", () => {
+    let currencyAddr: string;
 
     beforeEach(async () => {
-      let currencyAddr: string;
-
       await deploy();
       currencyAddr = await deployCurrency();
       await setupAuction(currencyAddr);
@@ -580,5 +579,59 @@ describe('InvertToken', () => {
       const tokenContentHash = await token.tokenContentHash(0);
       expect(tokenContentHash).eq(contentHash);
     });
+  });
+
+  describe("#updateTokenURI", async () => {
+    let currencyAddr: string;
+
+    beforeEach(async () => {
+      await deploy();
+      currencyAddr = await deployCurrency();
+      await setupAuction(currencyAddr);
+    });
+
+    it("should revert if the token does not exist", async () => {
+      const token = await tokenAs(creatorWallet);
+
+      await expect(token.updateTokenURI(1, "blah blah")).rejected;
+    });
+
+    it("should revert if the token does not have a content hash", async () => {
+      const token = await tokenAs(creatorWallet);
+
+      await expect(
+        mint(
+          token,
+          creatorWallet.address,
+          'www.example.com',
+          zeroContentHashBytes,
+          {
+            prevOwner: Decimal.new(10),
+            creator: Decimal.new(90),
+            owner: Decimal.new(0),
+          })
+      ).fulfilled;
+
+      const owner = await token.ownerOf(1);
+      const tokenContentHash = await token.tokenContentHash(1);
+
+      await expect(owner).eq(creatorWallet.address);
+      await expect(tokenContentHash).eq(ethers.constants.HashZero);
+      await expect(token.updateTokenURI(1, "blah blah")).rejected;
+    });
+
+    it("should revert if the caller is not the owner of the token", async () => {
+      const token = await tokenAs(otherWallet);
+
+      await expect(token.updateTokenURI(0, "blah blah")).rejected;
+    });
+
+    it("should set the tokenURI to the URI passed", async () => {
+      const token = await tokenAs(ownerWallet);
+      await expect(token.updateTokenURI(0, "blah blah")).fulfilled;
+
+      const tokenURI = await token.tokenURI(0);
+      expect(tokenURI).eq("blah blah");
+    })
   });
 });

@@ -65,6 +65,13 @@ contract InvertToken is ERC721Burnable {
         _;
     }
 
+    modifier onlyOwner(uint256 tokenId) {
+        require(_exists(tokenId), "ERC721: operator query for nonexistent token");
+        address owner = ownerOf(tokenId);
+        require(msg.sender == owner, "InvertToken: caller is not owner");
+        _;
+    }
+
     constructor(address auctionContract) public ERC721("Invert", "INVERT") {
         _auctionContract = auctionContract;
     }
@@ -135,6 +142,15 @@ contract InvertToken is ERC721Burnable {
         public
     {
         InvertAuction(_auctionContract).acceptBid(tokenId, bidder);
+    }
+
+    function updateTokenURI(uint256 tokenId, string memory tokenURI)
+        public
+        onlyExistingToken(tokenId)
+        onlyTokenWithContentHash(tokenId)
+        onlyOwner(tokenId)
+    {
+        _setTokenURI(tokenId, tokenURI);
     }
 
     function _setContentHash(uint256 tokenId, bytes32 contentHash)
