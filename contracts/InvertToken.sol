@@ -105,7 +105,6 @@ contract InvertToken is ERC721Burnable {
     }
 
     function removeBid(uint256 tokenId)
-        onlyExistingToken(tokenId)
         public
     {
         InvertAuction(_auctionContract).removeBid(tokenId, msg.sender);

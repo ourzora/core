@@ -389,6 +389,21 @@ describe('InvertToken', () => {
 
       await expect(removeBid(token, 0)).rejected;
     });
+
+    it('should remove a bid, even if the token is burned', async () => {
+      const asOwner = await tokenAs(ownerWallet);
+      const asBidder = await tokenAs(bidderWallet);
+
+      await asOwner.burn(0);
+      const beforeBalance = toNumWei(
+        await getBalance(currency, bidderWallet.address)
+      );
+      await expect(asBidder.removeBid(0)).fulfilled;
+      const afterBalance = toNumWei(
+        await getBalance(currency, bidderWallet.address)
+      );
+      expect(afterBalance).eq(beforeBalance + 100);
+    });
   });
 
   describe('#acceptBid', () => {
