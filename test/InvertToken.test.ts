@@ -473,4 +473,27 @@ describe('InvertToken', () => {
       await expect(token.acceptBid(0, AddressZero)).rejected;
     });
   });
+
+  describe('#burn', () => {
+    let currency: string;
+
+    beforeEach(async () => {
+      await deploy();
+      currency = await deployCurrency();
+      await setupAuction(currency);
+    });
+
+    it('should burn the token when called by an owner', async () => {
+      const token = await tokenAs(ownerWallet);
+
+      await expect(token.burn(0)).fulfilled;
+      await expect(token.ownerOf(0)).rejected;
+    });
+
+    it('should not be burnable when called by a non-owner', async () => {
+      const token = await tokenAs(otherWallet);
+
+      await expect(token.burn(0)).rejected;
+    });
+  });
 });
