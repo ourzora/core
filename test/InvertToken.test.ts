@@ -4,10 +4,10 @@ import { JsonRpcProvider } from '@ethersproject/providers';
 import { Blockchain } from '../utils/Blockchain';
 import { generatedWallets } from '../utils/generatedWallets';
 import { InvertAuctionFactory } from '../typechain/InvertAuctionFactory';
-import { Wallet } from 'ethers';
+import { ethers, Wallet } from 'ethers';
 import { AddressZero } from '@ethersproject/constants';
 import Decimal from '../utils/Decimal';
-import { BigNumber, BigNumberish } from 'ethers';
+import { BigNumber, BigNumberish, Bytes } from 'ethers';
 import {
   BaseErc20Factory,
   InvertToken,
@@ -20,11 +20,18 @@ import {
   mintCurrency,
   toNumWei,
 } from './utils';
+import { sha256 } from 'ethers/lib/utils';
 
 chai.use(asPromised);
 
 let provider = new JsonRpcProvider();
 let blockchain = new Blockchain(provider);
+
+
+let contentHex: string;
+let contentHash: string;
+let contentHashBytes: Bytes;
+let zeroContentHashBytes: Bytes;
 
 type DecimalValue = { value: BigNumber };
 
@@ -99,9 +106,10 @@ describe('InvertToken', () => {
     token: InvertToken,
     creator: string,
     tokenURI: string,
+    contentHash: Bytes,
     shares: BidShares
   ) {
-    return token.mint(creator, tokenURI, shares);
+    return token.mint(creator, tokenURI, contentHash, shares);
   }
 
   async function setAsk(token: InvertToken, tokenId: number, ask: Ask) {
@@ -147,6 +155,7 @@ describe('InvertToken', () => {
       asCreator,
       creatorWallet.address,
       'www.example.com',
+      contentHashBytes,
       defaultBidShares
     );
 
@@ -176,6 +185,10 @@ describe('InvertToken', () => {
 
   beforeEach(async () => {
     await blockchain.resetAsync();
+    contentHex = ethers.utils.formatBytes32String("invert");
+    contentHash = await sha256(contentHex);
+    contentHashBytes = ethers.utils.arrayify(contentHash);
+    zeroContentHashBytes = ethers.utils.arrayify(ethers.constants.HashZero);
   });
 
   describe('#constructor', () => {
@@ -185,6 +198,7 @@ describe('InvertToken', () => {
   });
 
   describe('#mint', () => {
+
     beforeEach(async () => {
       await deploy();
     });
@@ -193,7 +207,12 @@ describe('InvertToken', () => {
       const token = await tokenAs(creatorWallet);
 
       await expect(
-        mint(token, creatorWallet.address, 'www.example.com', {
+        mint(
+          token,
+          creatorWallet.address,
+          'www.example.com',
+          contentHashBytes,
+          {
           prevOwner: Decimal.new(10),
           creator: Decimal.new(90),
           owner: Decimal.new(0),
@@ -205,18 +224,55 @@ describe('InvertToken', () => {
       const ownerOf = await token.ownerOf(0);
       const creator = await token.tokenCreators(0);
       const prevOwner = await token.previousTokenOwners(0);
+      const tokenContentHash = await token.tokenContentHash(0);
 
       expect(toNumWei(t)).eq(toNumWei(ownerT));
       expect(ownerOf).eq(creatorWallet.address);
       expect(creator).eq(creatorWallet.address);
       expect(prevOwner).eq(creatorWallet.address);
+      expect(tokenContentHash).eq(contentHash);
+    });
+
+    it('should set the contentHash as zero bits if one is not specified', async () => {
+      const token = await tokenAs(creatorWallet);
+
+      await expect(
+        mint(
+          token,
+          creatorWallet.address,
+          'www.example.com',
+          zeroContentHashBytes,
+          {
+            prevOwner: Decimal.new(10),
+            creator: Decimal.new(90),
+            owner: Decimal.new(0),
+          })
+      ).fulfilled;
+
+      const t = await token.tokenByIndex(0);
+      const ownerT = await token.tokenOfOwnerByIndex(creatorWallet.address, 0);
+      const ownerOf = await token.ownerOf(0);
+      const creator = await token.tokenCreators(0);
+      const prevOwner = await token.previousTokenOwners(0);
+      const tokenContentHash = await token.tokenContentHash(0);
+
+      expect(toNumWei(t)).eq(toNumWei(ownerT));
+      expect(ownerOf).eq(creatorWallet.address);
+      expect(creator).eq(creatorWallet.address);
+      expect(prevOwner).eq(creatorWallet.address);
+      expect(tokenContentHash).eq(ethers.constants.HashZero);
     });
 
     it('should not be able to mint a token with bid shares summing to less than 100', async () => {
       const token = await tokenAs(creatorWallet);
 
       await expect(
-        mint(token, creatorWallet.address, 'www.example.com', {
+        mint(
+          token,
+          creatorWallet.address,
+          'www.example.com',
+          contentHashBytes,
+          {
           prevOwner: Decimal.new(15),
           owner: Decimal.new(15),
           creator: Decimal.new(15),
@@ -228,7 +284,12 @@ describe('InvertToken', () => {
       const token = await tokenAs(creatorWallet);
 
       await expect(
-        mint(token, creatorWallet.address, '222', {
+        mint(
+          token,
+          creatorWallet.address,
+          '222',
+          contentHashBytes,
+          {
           prevOwner: Decimal.new(99),
           owner: Decimal.new(1),
           creator: Decimal.new(1),
@@ -238,11 +299,11 @@ describe('InvertToken', () => {
   });
 
   describe('#setAsk', () => {
-    let currency: string;
+    let currencyAddr: string;
     beforeEach(async () => {
       await deploy();
-      currency = await deployCurrency();
-      await setupAuction(currency);
+      currencyAddr = await deployCurrency();
+      await setupAuction(currencyAddr);
     });
 
     it('should set the ask', async () => {
@@ -276,6 +337,7 @@ describe('InvertToken', () => {
         await tokenAs(creatorWallet),
         creatorWallet.address,
         '1111',
+        contentHashBytes,
         defaultBidShares
       );
       currencyAddr = await deployCurrency();
@@ -363,21 +425,21 @@ describe('InvertToken', () => {
   });
 
   describe('#removeBid', () => {
-    let currency: string;
+    let currencyAddr: string;
     beforeEach(async () => {
       await deploy();
-      currency = await deployCurrency();
-      await setupAuction(currency);
+      currencyAddr = await deployCurrency();
+      await setupAuction(currencyAddr);
     });
 
     it('should remove a bid and refund the bidder', async () => {
       const token = await tokenAs(bidderWallet);
       const beforeBalance = toNumWei(
-        await getBalance(currency, bidderWallet.address)
+        await getBalance(currencyAddr, bidderWallet.address)
       );
       await expect(removeBid(token, 0)).fulfilled;
       const afterBalance = toNumWei(
-        await getBalance(currency, bidderWallet.address)
+        await getBalance(currencyAddr, bidderWallet.address)
       );
 
       expect(afterBalance).eq(beforeBalance + 100);
@@ -396,23 +458,22 @@ describe('InvertToken', () => {
 
       await asOwner.burn(0);
       const beforeBalance = toNumWei(
-        await getBalance(currency, bidderWallet.address)
+        await getBalance(currencyAddr, bidderWallet.address)
       );
       await expect(asBidder.removeBid(0)).fulfilled;
       const afterBalance = toNumWei(
-        await getBalance(currency, bidderWallet.address)
+        await getBalance(currencyAddr, bidderWallet.address)
       );
       expect(afterBalance).eq(beforeBalance + 100);
     });
   });
 
   describe('#acceptBid', () => {
-    let currency: string;
-
+    let currencyAddr: string;
     beforeEach(async () => {
       await deploy();
-      currency = await deployCurrency();
-      await setupAuction(currency);
+      currencyAddr = await deployCurrency();
+      await setupAuction(currencyAddr);
     });
 
     it('should accept a bid', async () => {
@@ -425,31 +486,31 @@ describe('InvertToken', () => {
       await setBid(
         asBidder,
         {
-          ...defaultBid(currency, bidderWallet.address),
+          ...defaultBid(currencyAddr, bidderWallet.address),
           sellOnFee: Decimal.new(15),
         },
         0
       );
 
       const beforeOwnerBalance = toNumWei(
-        await getBalance(currency, ownerWallet.address)
+        await getBalance(currencyAddr, ownerWallet.address)
       );
       const beforePrevOwnerBalance = toNumWei(
-        await getBalance(currency, prevOwnerWallet.address)
+        await getBalance(currencyAddr, prevOwnerWallet.address)
       );
       const beforeCreatorBalance = toNumWei(
-        await getBalance(currency, creatorWallet.address)
+        await getBalance(currencyAddr, creatorWallet.address)
       );
       await expect(token.acceptBid(0, bidderWallet.address)).fulfilled;
       const newOwner = await token.ownerOf(0);
       const afterOwnerBalance = toNumWei(
-        await getBalance(currency, ownerWallet.address)
+        await getBalance(currencyAddr, ownerWallet.address)
       );
       const afterPrevOwnerBalance = toNumWei(
-        await getBalance(currency, prevOwnerWallet.address)
+        await getBalance(currencyAddr, prevOwnerWallet.address)
       );
       const afterCreatorBalance = toNumWei(
-        await getBalance(currency, creatorWallet.address)
+        await getBalance(currencyAddr, creatorWallet.address)
       );
       const bidShares = await auction.bidSharesForToken(0);
 
@@ -475,12 +536,12 @@ describe('InvertToken', () => {
   });
 
   describe('#burn', () => {
-    let currency: string;
+    let currencyAddr: string;
 
     beforeEach(async () => {
       await deploy();
-      currency = await deployCurrency();
-      await setupAuction(currency);
+      currencyAddr = await deployCurrency();
+      await setupAuction(currencyAddr);
     });
 
     it('should burn the token when called by an owner', async () => {
@@ -494,6 +555,30 @@ describe('InvertToken', () => {
       const token = await tokenAs(otherWallet);
 
       await expect(token.burn(0)).rejected;
+    });
+  });
+
+  describe("#tokenContentHash", () => {
+
+    beforeEach(async () => {
+      let currencyAddr: string;
+
+      await deploy();
+      currencyAddr = await deployCurrency();
+      await setupAuction(currencyAddr);
+    });
+
+    it('should revert if the tokenId does not exist', async () => {
+      const token = await tokenAs(otherWallet);
+
+      await expect(token.tokenContentHash(1)).rejected;
+    });
+
+    it('should return the token hash', async () => {
+      const token = await tokenAs(otherWallet);
+
+      const tokenContentHash = await token.tokenContentHash(0);
+      expect(tokenContentHash).eq(contentHash);
     });
   });
 });

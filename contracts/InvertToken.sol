@@ -22,10 +22,13 @@ contract InvertToken is ERC721Burnable {
     mapping(uint256 => address) public previousTokenOwners;
 
     // Mapping from token id to creator address
-    mapping (uint256 => address) public tokenCreators;
+    mapping(uint256 => address) public tokenCreators;
 
     // Mapping from creator address to their (enumerable) set of created tokens
-    mapping (address => EnumerableSet.UintSet) private _creatorTokens;
+    mapping(address => EnumerableSet.UintSet) private _creatorTokens;
+
+    // Mapping from token id to sha256 hash of content
+    mapping(uint256 => bytes32) private _tokenContentHashes;
 
     Counters.Counter private _tokenIdTracker;
 
@@ -33,6 +36,7 @@ contract InvertToken is ERC721Burnable {
         uint256 tokenId,
         address bidder
     );
+
     event AskCreated(
         uint256 tokenId,
         address owner,
@@ -43,6 +47,11 @@ contract InvertToken is ERC721Burnable {
 
     modifier onlyExistingToken (uint256 tokenId) {
         require(_exists(tokenId), "InvertToken: Nonexistant token");
+        _;
+    }
+
+    modifier onlyTokenWithContentHash (uint256 tokenId) {
+        require(_tokenContentHashes[tokenId] != "", "IntertToken: token does not have hash of created content");
         _;
     }
 
@@ -67,19 +76,29 @@ contract InvertToken is ERC721Burnable {
     *
     * See {ERC721-_safeMint}.
     */
-    function mint(address creator, string memory tokenURI, InvertAuction.BidShares memory bidShares) public {
+    function mint(address creator, string memory tokenURI, bytes32 contentHash, InvertAuction.BidShares memory bidShares) public {
         // We cannot just use balanceOf to create the new tokenId because tokens
         // can be burned (destroyed), so we need a separate counter.
         uint256 tokenId = _tokenIdTracker.current();
 
         _safeMint(creator, tokenId);
         _tokenIdTracker.increment();
-
+        _setContentHash(tokenId, contentHash);
         _setTokenURI(tokenId, tokenURI);
         _creatorTokens[creator].add(tokenId);
+
         tokenCreators[tokenId] = creator;
         previousTokenOwners[tokenId] = creator;
         InvertAuction(_auctionContract).addBidShares(tokenId, bidShares);
+    }
+
+    function tokenContentHash(uint256 tokenId)
+        public
+        view
+        onlyExistingToken(tokenId)
+        returns (bytes32)
+    {
+        return _tokenContentHashes[tokenId];
     }
 
     function auctionTransfer(uint256 tokenId, address bidder)
@@ -116,5 +135,13 @@ contract InvertToken is ERC721Burnable {
         public
     {
         InvertAuction(_auctionContract).acceptBid(tokenId, bidder);
+    }
+
+    function _setContentHash(uint256 tokenId, bytes32 contentHash)
+        internal
+        virtual
+        onlyExistingToken(tokenId)
+    {
+        _tokenContentHashes[tokenId] = contentHash;
     }
 }
