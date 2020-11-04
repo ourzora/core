@@ -1,13 +1,13 @@
 pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
 
-import {ERC721Burnable} from "@openzeppelin/contracts/token/ERC721/ERC721Burnable.sol";
-import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC721Burnable} from "./ERC721Burnable.sol";
+import {ERC721} from "./ERC721.sol";
 import {EnumerableSet} from  "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import {Counters} from "@openzeppelin/contracts/utils/Counters.sol";
-import {SafeMath} from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import {Math} from "@openzeppelin/contracts-ethereum-package/contracts/math/Math.sol";
-import {IERC20} from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
+import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {Math} from "@openzeppelin/contracts/math/Math.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Decimal} from "./Decimal.sol";
 import {InvertAuction} from "./InvertAuction.sol";
 
@@ -26,6 +26,14 @@ contract InvertToken is ERC721Burnable {
 
     // Mapping from creator address to their (enumerable) set of created tokens
     mapping (address => EnumerableSet.UintSet) private _creatorTokens;
+
+    //keccak256("Permit(address spender,uint256 tokenId,uint256 nonce,uint256 deadline)");
+    bytes32 PERMIT_TYPEHASH = 0x49ecf333e5b8c95c40fdafc95c1ad136e8914a8fb55e9dc8bb01eaa83a2df9ad;
+
+    bytes32 public DOMAIN_SEPARATOR;
+
+    // Mapping from address to token id to permit nonce
+    mapping (address => mapping (uint256 => uint256)) public permitNonces;
 
     Counters.Counter private _tokenIdTracker;
 
@@ -58,6 +66,7 @@ contract InvertToken is ERC721Burnable {
 
     constructor(address auctionContract) public ERC721("Invert", "INVERT") {
         _auctionContract = auctionContract;
+        DOMAIN_SEPARATOR = initDomainSeparator("Invert", "1");
     }
 
     /**
@@ -116,5 +125,72 @@ contract InvertToken is ERC721Burnable {
         public
     {
         InvertAuction(_auctionContract).acceptBid(tokenId, bidder);
+    }
+
+    function permit(
+        address spender,
+        uint256 tokenId,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    )
+        onlyExistingToken(tokenId)
+        external
+    {
+        require(deadline == 0 || deadline >= block.timestamp, "InvertToken: Permit expired");
+        require(spender != address(0), "InvertToken: spender cannot be 0x0");
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        PERMIT_TYPEHASH,
+                        spender,
+                        tokenId,
+                        permitNonces[ownerOf(tokenId)][tokenId]++,
+                        deadline
+                    )
+                )
+            )
+        );
+
+        address recoveredAddress = ecrecover(digest, v, r, s);
+
+        require(
+            recoveredAddress != address(0)  && ownerOf(tokenId) == recoveredAddress,
+            "InvertToken: Signature invalid"
+        );
+
+        _approve(spender, tokenId);
+    }
+
+    /**
+     * @dev Initializes EIP712 DOMAIN_SEPARATOR based on the current contract and chain ID.
+     */
+    function initDomainSeparator(
+        string memory name,
+        string memory version
+    )
+    internal
+    returns (bytes32)
+    {
+        uint256 chainID;
+        /* solium-disable-next-line */
+        assembly {
+            chainID := chainid()
+        }
+
+        return keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes(name)),
+                keccak256(bytes(version)),
+                chainID,
+                address(this)
+            )
+        );
     }
 }
