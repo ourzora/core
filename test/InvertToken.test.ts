@@ -55,6 +55,7 @@ describe('InvertToken', () => {
     ownerWallet,
     prevOwnerWallet,
     otherWallet,
+    nonBidderWallet
   ] = generatedWallets(provider);
 
   let defaultBidShares = {
@@ -368,6 +369,12 @@ describe('InvertToken', () => {
       await deploy();
       currency = await deployCurrency();
       await setupAuction(currency);
+    });
+
+    it("should revert if the bidder has not placed a bid", async () => {
+      const token = await tokenAs(nonBidderWallet);
+
+      await expect(removeBid(token, 0)).rejected;
     });
 
     it('should remove a bid and refund the bidder', async () => {
