@@ -43,17 +43,16 @@ contract SuperRareV2Migrate is IZoraMigrate, IERC721Receiver {
         _;
     }
 
-    // TODO: should we allow for additional metadata to be specified?
-    function migrate(uint256 tokenId, address creatorAddress, PartialBidShares calldata pbs)
+    function migrate(uint256 oldTokenId, address creatorAddress, PartialBidShares calldata pbs)
         external
         override
-        onlyOwnerAndAllowance(msg.sender, tokenId)
+        onlyOwnerAndAllowance(msg.sender, oldTokenId)
     {
-        address creator = _superrare.tokenCreator(tokenId);
+        address creator = _superrare.tokenCreator(oldTokenId);
         require(_storage.isApproved(creator), "SuperRareV2Migrate: creator has not yet approved the migration of their creations to Zora");
-        _superrare.safeTransferFrom(msg.sender, address(this), tokenId);
+        _superrare.safeTransferFrom(msg.sender, address(this), oldTokenId);
 
-        string memory tokenURI = _superrare.tokenURI(tokenId);
+        string memory tokenURI = _superrare.tokenURI(oldTokenId);
 
         InvertAuction.BidShares memory bidShare = InvertAuction.BidShares({
             creator: defaultCreatorShare,
@@ -62,7 +61,7 @@ contract SuperRareV2Migrate is IZoraMigrate, IERC721Receiver {
         });
 
         _invert.mint(creator, tokenURI, bidShare);
-        _superrare.deleteToken(tokenId);
+        _storage.addTokenLink(_invert.totalSupply()-1, address(_superrare), oldTokenId);
     }
 
     function onERC721Received(address operator, address from, uint256 tokenId, bytes memory data)

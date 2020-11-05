@@ -12,4 +12,5 @@ interface IInvertToken {
     function setBid(uint256 tokenId, InvertAuction.Bid calldata bid) external;
     function removeBid(uint256 tokenId) external;
     function acceptBid(uint256 tokenId, address bidder) external;
+    function totalSupply() external returns(uint256);
 }
