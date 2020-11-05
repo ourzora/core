@@ -434,6 +434,12 @@ describe('Media', () => {
       await expect(removeBid(token, 0)).rejected;
     });
 
+    it("should revert if the tokenId has not yet ben created", async () => {
+      const token = await tokenAs(bidderWallet);
+
+      await expect(removeBid(token, 100)).rejected;
+    });
+
     it('should remove a bid and refund the bidder', async () => {
       const token = await tokenAs(bidderWallet);
       const beforeBalance = toNumWei(
@@ -457,8 +463,10 @@ describe('Media', () => {
     it('should remove a bid, even if the token is burned', async () => {
       const asOwner = await tokenAs(ownerWallet);
       const asBidder = await tokenAs(bidderWallet);
+      const asCreator = await tokenAs(creatorWallet);
 
-      await asOwner.burn(0);
+      await asOwner.transferFrom(ownerWallet.address, creatorWallet.address, 0);
+      await asCreator.burn(0);
       const beforeBalance = toNumWei(
         await getBalance(currencyAddr, bidderWallet.address)
       );
@@ -536,25 +544,57 @@ describe('Media', () => {
   });
 
   describe('#burn', () => {
-    let currencyAddr: string;
-
     beforeEach(async () => {
       await deploy();
-      currencyAddr = await deployCurrency();
-      await setupAuction(currencyAddr);
+      const token = await tokenAs(creatorWallet);
+      await mint(
+        token,
+        creatorWallet.address,
+        'www.example.com',
+        contentHashBytes,
+        {
+          prevOwner: Decimal.new(10),
+          creator: Decimal.new(90),
+          owner: Decimal.new(0),
+        });
     });
 
-    it('should burn the token when called by an owner', async () => {
+    it('should revert when the caller is the owner, but not creator', async () => {
       const token = await tokenAs(ownerWallet);
 
-      await expect(token.burn(0)).fulfilled;
-      await expect(token.ownerOf(0)).rejected;
+      await expect(token.burn(0)).rejected;
     });
 
-    it('should not be burnable when called by a non-owner', async () => {
+    it('should revert when the caller is not the owner or a creator', async () => {
       const token = await tokenAs(otherWallet);
 
       await expect(token.burn(0)).rejected;
+    });
+
+    it("should revert if the token id does not exist", async () => {
+      const token = await tokenAs(creatorWallet);
+
+      await expect(token.burn(100)).rejected;
+    })
+
+    it('should clear approvals, set remove owner, but maintain tokenURI and contentHash', async () => {
+      const token = await tokenAs(creatorWallet);
+      await expect(token.approve(otherWallet.address, 0)).fulfilled;
+
+      await expect(token.burn(0)).fulfilled;
+
+      await expect(token.ownerOf(0)).rejected;
+
+      const totalSupply = await token.totalSupply();
+     expect(toNumWei(totalSupply)).eq(0);
+
+      await expect(token.getApproved(0)).rejected;
+
+      const tokenURI = await token.tokenURI(0);
+      expect(tokenURI).eq("www.example.com");
+
+      const contentHash = await token.tokenContentHashes(0);
+      expect(contentHash).eq(contentHash);
     });
   });
 
@@ -609,6 +649,7 @@ describe('Media', () => {
       await expect(token.updateTokenURI(0, 'blah blah')).fulfilled;
 
       const tokenURI = await token.tokenURI(0);
+<<<<<<< HEAD
       expect(tokenURI).eq('blah blah');
     });
   });
@@ -651,6 +692,9 @@ describe('Media', () => {
         token.permit(otherWallet.address, 0, sig.deadline, sig.v, sig.r, sig.s)
       ).rejected;
       await expect(token.getApproved(0)).eventually.eq(AddressZero);
+=======
+      expect(tokenURI).eq("blah blah");
+>>>>>>> e6d4f36... [feature] add override for burn function and new modifiers
     });
   });
 });
