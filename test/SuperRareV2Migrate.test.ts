@@ -6,7 +6,7 @@ import chai, { expect } from 'chai';
 import asPromised from 'chai-as-promised';
 import { SuperRareV2MigrateFactory } from '../typechain/SuperRareV2MigrateFactory';
 import { CreatorMigrationStorageFactory } from '../typechain/CreatorMigrationStorageFactory';
-import { BigNumber, Bytes, Wallet } from 'ethers';
+import { BigNumber, Bytes, ethers, Wallet } from 'ethers';
 import Decimal from '../utils/Decimal';
 import { InvertAuctionFactory, InvertToken, InvertTokenFactory, SuperRareV2Factory } from '../typechain';
 import {
@@ -213,15 +213,20 @@ describe("SuperRareV2Migrate", () => {
       const beforeUserOwned = await SuperRareV2Factory.connect(superRareV2ContractAddress, userWallet).balanceOf(userWallet.address);
       expect(toNumWei(beforeUserOwned)).eq(1);
 
+      const writeRole = "0x18cfcf91fbc7fc280a1d211ca0a14f1d9abfe30d0bde44077e7a455f3eed9cf4";
+      const writeRoleBytes = ethers.utils.arrayify(writeRole);
+      await CreatorMigrationStorageFactory.connect(storageContractAddress, deployerWallet).grantRole(writeRoleBytes, superRareMigrateAddress);
+
+
       await expect(migrate(userWallet, defaultTokenId, userWallet.address, defaultPBS)).fulfilled;
 
       // verify userWallet now has a balanceOf == 0 in SuperRareV2 contract
       const afterUserOwned = await SuperRareV2Factory.connect(superRareV2ContractAddress, userWallet).balanceOf(userWallet.address);
       expect(toNumWei(afterUserOwned)).eq(0);
 
-      // verify the migrate contract has a balanceOf == 0
+      // verify the migrate contract has a balanceOf == 1
       const legacyOwned = await SuperRareV2Factory.connect(superRareV2ContractAddress, userWallet).balanceOf(superRareMigrateAddress);
-      expect(toNumWei(legacyOwned)).eq(0);
+      expect(toNumWei(legacyOwned)).eq(1);
 
       // verify the ownerOf(defaultTokenId) in Invert is the address that called migrate()
       const zoraOwner = await InvertTokenFactory.connect(invertContractAddress, userWallet).ownerOf(defaultTokenId);

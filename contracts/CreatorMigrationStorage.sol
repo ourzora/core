@@ -1,26 +1,30 @@
 pragma solidity 0.6.8;
 
 import {ECDSA} from "@openzeppelin/contracts/cryptography/ECDSA.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract CreatorMigrationStorage is Ownable, AccessControl {
+contract CreatorMigrationStorage is AccessControl {
+
+    struct PreviousTokenInfo {
+        address tokenContract;
+        uint256 tokenId;
+    }
 
     mapping (address => bool ) private _approvedCreators;
-    mapping (uint256 => mapping(address => uint256)) public tokenLink;
+    mapping (uint256 => PreviousTokenInfo) public previousTokenInfo;
     bytes32 public message = 0x00818a54cf83407b094e3c47a79f3ae6bdbba59933701f01b859eac6433b00c3; // keccak256("invert");
 
-    bytes32 public LINKER_ROLE = keccak256("LINKER_ROLE");
+    bytes32 public WRITE_STORAGE_ROLE = keccak256("WRITE_STORAGE_ROLE");
 
     constructor()
         public
-        Ownable()
     {
-        _setupRole(LINKER_ROLE, msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(WRITE_STORAGE_ROLE, msg.sender);
     }
 
-    modifier onlyLinkerRole(){
-        require(hasRole(LINKER_ROLE, msg.sender), "CreatorMigrationStorage: caller must have LINKER_ROLE");
+    modifier onlyWriteStorageRole(){
+        require(hasRole(WRITE_STORAGE_ROLE, msg.sender), "CreatorMigrationStorage: caller must have WRITE_STORAGE_ROLE");
         _;
     }
 
@@ -45,10 +49,15 @@ contract CreatorMigrationStorage is Ownable, AccessControl {
         return false;
     }
 
-    function addTokenLink(uint256 invertTokenId, address oldTokenAddress, uint256 oldTokenId)
+    function addPreviousTokenInfo(uint256 invertTokenId, address prevTokenContract, uint256 prevTokenId)
         external
-        onlyLinkerRole()
+        onlyWriteStorageRole()
     {
-        tokenLink[invertTokenId][oldTokenAddress] = oldTokenId;
+        PreviousTokenInfo memory prev = PreviousTokenInfo({
+            tokenContract: prevTokenContract,
+            tokenId: prevTokenId
+        });
+
+        previousTokenInfo[invertTokenId] = prev;
     }
 }

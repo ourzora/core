@@ -2,12 +2,15 @@ import { generatedWallets, signMessage } from '../utils/generatedWallets';
 import { Blockchain } from '../utils/Blockchain';
 import { Wallet } from 'ethers';
 import { Bytes } from 'ethers';
-
+import { ethers } from 'ethers';
+import { BigNumberish } from 'ethers';
 import { JsonRpcProvider } from '@ethersproject/providers';
 import chai, { expect } from 'chai';
 import asPromised from 'chai-as-promised';
 import { CreatorMigrationStorage } from '../typechain/CreatorMigrationStorage';
 import { CreatorMigrationStorageFactory } from '../typechain/CreatorMigrationStorageFactory';
+import { keccak256 } from 'ethers/lib/utils';
+import { toNumWei } from './utils';
 
 chai.use(asPromised);
 
@@ -44,6 +47,41 @@ describe("CreatorMigrationStorage", () => {
       storageContractAddress,
       userWallet
     ).isApproved(creatorAddress);
+  }
+
+  async function owner(){
+    return CreatorMigrationStorageFactory.connect(
+      storageContractAddress,
+      userWallet
+    ).owner();
+  }
+
+  async function grantRole(role: Bytes, address: string){
+    return CreatorMigrationStorageFactory.connect(
+      storageContractAddress,
+      deployerWallet
+    ).grantRole(role, address);
+  }
+
+  async function hasRole(role: Bytes, address: string){
+    return CreatorMigrationStorageFactory.connect(
+      storageContractAddress,
+      deployerWallet
+    ).hasRole(role, address);
+  }
+
+  async function addPreviousTokenInfo(wallet: Wallet, invertTokenId: BigNumberish, tokenAddress: string, oldTokenId: BigNumberish){
+    return CreatorMigrationStorageFactory.connect(
+      storageContractAddress,
+      wallet
+    ).addPreviousTokenInfo(invertTokenId, tokenAddress, oldTokenId);
+  }
+
+  async function getPreviousTokenInfo(tokenId: BigNumberish){
+    return CreatorMigrationStorageFactory.connect(
+      storageContractAddress,
+      userWallet
+    ).previousTokenInfo(tokenId);
   }
 
   function revert(message: string) {
@@ -105,5 +143,31 @@ describe("CreatorMigrationStorage", () => {
       const creatorApproved = await isApproved(creatorWallet.address);
       expect(creatorApproved).eq(false);
     });
+  });
+
+  describe("#addTokenLink", async() => {
+    beforeEach(async () => {
+      await deploy();
+    });
+
+    it("reverts if the caller does not have the LINKER_ROLE", async() => {
+      const tokenAddress =  "0xa2d917811698d92D7FF80ed988775F274a51b435";
+      await expect(addPreviousTokenInfo(userWallet, 0, tokenAddress, 1)).rejected;
+    });
+
+    it("adds the specified token link to storage", async() => {
+      const tokenAddress =  "0xa2d917811698d92D7FF80ed988775F274a51b435";
+      const writeRole = "0x18cfcf91fbc7fc280a1d211ca0a14f1d9abfe30d0bde44077e7a455f3eed9cf4";
+      const writeRoleBytes = ethers.utils.arrayify(writeRole);
+
+      await expect(grantRole(writeRoleBytes, userWallet.address)).fulfilled;
+      const userHasRole = await hasRole(writeRoleBytes, userWallet.address);
+      expect(userHasRole).eq(true);
+
+      await expect(addPreviousTokenInfo(userWallet, 0, tokenAddress, 1)).fulfilled;
+      const tokenLink = await (getPreviousTokenInfo(0));
+      expect(tokenLink.tokenContract).eq(tokenAddress);
+      expect(toNumWei(tokenLink.tokenId)).eq(1);
+    })
   });
 });
