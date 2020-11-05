@@ -45,6 +45,10 @@ contract InvertToken is ERC721Burnable {
         uint256 currencyDecimals
     );
 
+    // Event indicating uri was updated.
+    event TokenURIUpdated(uint256 indexed _tokenId, string  _uri);
+
+
     modifier onlyExistingToken (uint256 tokenId) {
         require(_exists(tokenId), "InvertToken: Nonexistant token");
         _;
@@ -151,6 +155,7 @@ contract InvertToken is ERC721Burnable {
         onlyOwner(tokenId)
     {
         _setTokenURI(tokenId, tokenURI);
+        emit TokenURIUpdated(tokenId, tokenURI);
     }
 
     function _setContentHash(uint256 tokenId, bytes32 contentHash)
