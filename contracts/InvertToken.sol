@@ -28,7 +28,7 @@ contract InvertToken is ERC721Burnable {
     mapping(address => EnumerableSet.UintSet) private _creatorTokens;
 
     // Mapping from token id to sha256 hash of content
-    mapping(uint256 => bytes32) private _tokenContentHashes;
+    mapping(uint256 => bytes32) public tokenContentHashes;
 
     Counters.Counter private _tokenIdTracker;
 
@@ -55,7 +55,7 @@ contract InvertToken is ERC721Burnable {
     }
 
     modifier onlyTokenWithContentHash (uint256 tokenId) {
-        require(_tokenContentHashes[tokenId] != "", "IntertToken: token does not have hash of created content");
+        require(tokenContentHashes[tokenId] != "", "IntertToken: token does not have hash of created content");
         _;
     }
 
@@ -101,15 +101,6 @@ contract InvertToken is ERC721Burnable {
         tokenCreators[tokenId] = creator;
         previousTokenOwners[tokenId] = creator;
         InvertAuction(_auctionContract).addBidShares(tokenId, bidShares);
-    }
-
-    function tokenContentHash(uint256 tokenId)
-        public
-        view
-        onlyExistingToken(tokenId)
-        returns (bytes32)
-    {
-        return _tokenContentHashes[tokenId];
     }
 
     function auctionTransfer(uint256 tokenId, address bidder)
@@ -163,6 +154,6 @@ contract InvertToken is ERC721Burnable {
         virtual
         onlyExistingToken(tokenId)
     {
-        _tokenContentHashes[tokenId] = contentHash;
+        tokenContentHashes[tokenId] = contentHash;
     }
 }

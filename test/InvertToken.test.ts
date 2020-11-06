@@ -224,7 +224,7 @@ describe('InvertToken', () => {
       const ownerOf = await token.ownerOf(0);
       const creator = await token.tokenCreators(0);
       const prevOwner = await token.previousTokenOwners(0);
-      const tokenContentHash = await token.tokenContentHash(0);
+      const tokenContentHash = await token.tokenContentHashes(0);
 
       expect(toNumWei(t)).eq(toNumWei(ownerT));
       expect(ownerOf).eq(creatorWallet.address);
@@ -254,7 +254,7 @@ describe('InvertToken', () => {
       const ownerOf = await token.ownerOf(0);
       const creator = await token.tokenCreators(0);
       const prevOwner = await token.previousTokenOwners(0);
-      const tokenContentHash = await token.tokenContentHash(0);
+      const tokenContentHash = await token.tokenContentHashes(0);
 
       expect(toNumWei(t)).eq(toNumWei(ownerT));
       expect(ownerOf).eq(creatorWallet.address);
@@ -558,29 +558,6 @@ describe('InvertToken', () => {
     });
   });
 
-  describe("#tokenContentHash", () => {
-    let currencyAddr: string;
-
-    beforeEach(async () => {
-      await deploy();
-      currencyAddr = await deployCurrency();
-      await setupAuction(currencyAddr);
-    });
-
-    it('should revert if the tokenId does not exist', async () => {
-      const token = await tokenAs(otherWallet);
-
-      await expect(token.tokenContentHash(1)).rejected;
-    });
-
-    it('should return the token hash', async () => {
-      const token = await tokenAs(otherWallet);
-
-      const tokenContentHash = await token.tokenContentHash(0);
-      expect(tokenContentHash).eq(contentHash);
-    });
-  });
-
   describe("#updateTokenURI", async () => {
     let currencyAddr: string;
 
@@ -613,7 +590,7 @@ describe('InvertToken', () => {
       ).fulfilled;
 
       const owner = await token.ownerOf(1);
-      const tokenContentHash = await token.tokenContentHash(1);
+      const tokenContentHash = await token.tokenContentHashes(1);
 
       await expect(owner).eq(creatorWallet.address);
       await expect(tokenContentHash).eq(ethers.constants.HashZero);
