@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 import {InvertAuction} from "../InvertAuction.sol";
 
 interface IInvertToken {
-    function mint(address creator, string calldata tokenURI, InvertAuction.BidShares calldata bidShares) external;
+    function mint(address creator, string calldata tokenURI, bytes32 contentHash, InvertAuction.BidShares calldata bidShares) external;
     function auctionTransfer(uint256 tokenId, address bidder) external;
     function tokenCreator(uint256 tokenId) external returns(address);
     function tokenPreviousOwner(uint256 tokenId) external returns(address);

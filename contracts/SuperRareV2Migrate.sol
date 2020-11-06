@@ -61,7 +61,7 @@ contract SuperRareV2Migrate is IZoraMigrate, IERC721Receiver {
             prevOwner: pbs.prevOwner
         });
 
-        _invert.mint(creator, tokenURI, bidShare);
+        _invert.mint(creator, tokenURI, "", bidShare);
         _superrare.deleteToken(tokenId);
     }
 
