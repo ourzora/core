@@ -257,14 +257,10 @@ contract Media is ERC721Burnable {
         override
     {
         address owner = ownerOf(tokenId);
-
+        
         _beforeTokenTransfer(owner, address(0), tokenId);
-
-        // Clear approvals
         _approve(address(0), tokenId);
-
         _holderTokens[owner].remove(tokenId);
-
         _tokenOwners.remove(tokenId);
 
         emit Transfer(owner, address(0), tokenId);
