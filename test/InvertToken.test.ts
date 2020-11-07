@@ -649,7 +649,6 @@ describe('Media', () => {
       await expect(token.updateTokenURI(0, 'blah blah')).fulfilled;
 
       const tokenURI = await token.tokenURI(0);
-<<<<<<< HEAD
       expect(tokenURI).eq('blah blah');
     });
   });
@@ -692,9 +691,6 @@ describe('Media', () => {
         token.permit(otherWallet.address, 0, sig.deadline, sig.v, sig.r, sig.s)
       ).rejected;
       await expect(token.getApproved(0)).eventually.eq(AddressZero);
-=======
-      expect(tokenURI).eq("blah blah");
->>>>>>> e6d4f36... [feature] add override for burn function and new modifiers
     });
   });
 });
