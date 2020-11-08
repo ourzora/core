@@ -139,12 +139,12 @@ contract InvertToken is ERC721Burnable {
         InvertAuction(_auctionContract).removeBid(tokenId, msg.sender);
     }
 
-    function acceptBid(uint256 tokenId, address bidder)
+    function acceptBid(uint256 tokenId, InvertAuction.Bid memory bid)
         onlyExistingToken(tokenId)
         onlyApprovedOrOwner(msg.sender, tokenId)
         public
     {
-        InvertAuction(_auctionContract).acceptBid(tokenId, bidder);
+        InvertAuction(_auctionContract).acceptBid(tokenId, bid);
     }
 
     function updateTokenURI(uint256 tokenId, string memory tokenURI)

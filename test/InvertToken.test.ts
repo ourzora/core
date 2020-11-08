@@ -121,12 +121,8 @@ describe('InvertToken', () => {
     return token.removeBid(tokenId);
   }
 
-  async function acceptBid(
-    token: InvertToken,
-    tokenId: number,
-    bidder: string
-  ) {
-    return token.acceptBid(tokenId, bidder);
+  async function acceptBid(token: InvertToken, tokenId: number, bid: Bid) {
+    return token.acceptBid(tokenId, bid);
   }
 
   // Trade a token a few times and create some open bids
@@ -161,13 +157,19 @@ describe('InvertToken', () => {
       defaultBid(currencyAddr, prevOwnerWallet.address),
       tokenId
     );
-    await acceptBid(asCreator, tokenId, prevOwnerWallet.address);
+    await acceptBid(asCreator, tokenId, {
+      ...defaultBid(currencyAddr, prevOwnerWallet.address),
+    });
     await setBid(
       asOwner,
       defaultBid(currencyAddr, ownerWallet.address),
       tokenId
     );
-    await acceptBid(asPrevOwner, tokenId, ownerWallet.address);
+    await acceptBid(
+      asPrevOwner,
+      tokenId,
+      defaultBid(currencyAddr, ownerWallet.address)
+    );
     await setBid(
       asBidder,
       defaultBid(currencyAddr, bidderWallet.address),
@@ -483,14 +485,11 @@ describe('InvertToken', () => {
         bidderWallet
       );
       const asBidder = await tokenAs(bidderWallet);
-      await setBid(
-        asBidder,
-        {
-          ...defaultBid(currencyAddr, bidderWallet.address),
-          sellOnFee: Decimal.new(15),
-        },
-        0
-      );
+      const bid = {
+        ...defaultBid(currencyAddr, bidderWallet.address),
+        sellOnFee: Decimal.new(15),
+      };
+      await setBid(asBidder, bid, 0);
 
       const beforeOwnerBalance = toNumWei(
         await getBalance(currencyAddr, ownerWallet.address)
@@ -501,7 +500,7 @@ describe('InvertToken', () => {
       const beforeCreatorBalance = toNumWei(
         await getBalance(currencyAddr, creatorWallet.address)
       );
-      await expect(token.acceptBid(0, bidderWallet.address)).fulfilled;
+      await expect(token.acceptBid(0, bid)).fulfilled;
       const newOwner = await token.ownerOf(0);
       const afterOwnerBalance = toNumWei(
         await getBalance(currencyAddr, ownerWallet.address)
@@ -526,12 +525,16 @@ describe('InvertToken', () => {
     it('should revert if not called by the owner', async () => {
       const token = await tokenAs(otherWallet);
 
-      await expect(token.acceptBid(0, otherWallet.address)).rejected;
+      await expect(
+        token.acceptBid(0, { ...defaultBid(currencyAddr, otherWallet.address) })
+      ).rejected;
     });
 
     it('should revert if a non-existent bid is accepted', async () => {
       const token = await tokenAs(creatorWallet);
-      await expect(token.acceptBid(0, AddressZero)).rejected;
+      await expect(
+        token.acceptBid(0, { ...defaultBid(currencyAddr, AddressZero) })
+      ).rejected;
     });
   });
 

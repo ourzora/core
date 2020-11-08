@@ -202,18 +202,22 @@ contract InvertAuction {
     * @dev Accepts a bid from a particular bidder. Can only be called by the token
     * owner or an approved address. See {_finalizeNFTTransfer}
     */
-    function acceptBid(uint256 tokenId, address bidder)
+    function acceptBid(uint256 tokenId, Bid calldata expectedBid)
     onlyTokenCaller
     external
     {
-        Bid memory bid = _tokenBidders[tokenId][bidder];
+        Bid memory bid = _tokenBidders[tokenId][expectedBid.bidder];
         require(bid.amount > 0, "InvertAuction: cannot accept bid of 0");
+        require(
+            bid.amount == expectedBid.amount && bid.currency == expectedBid.currency && bid.sellOnFee.value == expectedBid.sellOnFee.value,
+            "InvertAuction: Unexpected bid found."
+        );
         require(
             isValidBid(tokenId, bid.amount),
             "InvertAuction: Bid invalid for share splitting"
         );
 
-        _finalizeNFTTransfer(tokenId, bidder);
+        _finalizeNFTTransfer(tokenId, bid.bidder);
     }
 
     function isValidBid(uint256 tokenId, uint256 bidAmount)
