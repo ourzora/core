@@ -3,14 +3,14 @@ import asPromised from 'chai-as-promised';
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { Blockchain } from '../utils/Blockchain';
 import { generatedWallets } from '../utils/generatedWallets';
-import { InvertAuctionFactory } from '../typechain/InvertAuctionFactory';
+import { MarketFactory } from '../typechain/MarketFactory';
 import { Wallet } from 'ethers';
 import Decimal from '../utils/Decimal';
 import { BigNumber, BigNumberish } from 'ethers';
 import { formatUnits } from '@ethersproject/units';
 import { AddressZero, MaxUint256 } from '@ethersproject/constants';
 import { BaseErc20Factory } from '../typechain/BaseErc20Factory';
-import { InvertAuction } from '../typechain/InvertAuction';
+import { Market } from '../typechain/Market';
 
 chai.use(asPromised);
 
@@ -38,7 +38,7 @@ type Bid = {
   sellOnFee: { value: BigNumberish };
 };
 
-describe('InvertAuction', () => {
+describe('Market', () => {
   let [
     deployerWallet,
     bidderWallet,
@@ -70,37 +70,36 @@ describe('InvertAuction', () => {
   }
 
   async function auctionAs(wallet: Wallet) {
-    return InvertAuctionFactory.connect(auctionAddress, wallet);
+    return MarketFactory.connect(auctionAddress, wallet);
   }
   async function deploy() {
     const auction = await (
-      await new InvertAuctionFactory(deployerWallet).deploy()
+      await new MarketFactory(deployerWallet).deploy()
     ).deployed();
     auctionAddress = auction.address;
   }
   async function configure() {
-    return InvertAuctionFactory.connect(
-      auctionAddress,
-      deployerWallet
-    ).configure(mockTokenWallet.address);
+    return MarketFactory.connect(auctionAddress, deployerWallet).configure(
+      mockTokenWallet.address
+    );
   }
 
   async function readTokenContract() {
-    return InvertAuctionFactory.connect(
+    return MarketFactory.connect(
       auctionAddress,
       deployerWallet
     ).tokenContract();
   }
 
   async function addBidShares(
-    auction: InvertAuction,
+    auction: Market,
     tokenId: number,
     bidShares?: BidShares
   ) {
     return auction.addBidShares(tokenId, bidShares);
   }
 
-  async function setAsk(auction: InvertAuction, tokenId: number, ask?: Ask) {
+  async function setAsk(auction: Market, tokenId: number, ask?: Ask) {
     return auction.setAsk(tokenId, ask);
   }
 
@@ -130,7 +129,7 @@ describe('InvertAuction', () => {
   async function getBalance(currency: string, owner: string) {
     return BaseErc20Factory.connect(currency, deployerWallet).balanceOf(owner);
   }
-  async function setBid(auction: InvertAuction, bid: Bid, tokenId: number) {
+  async function setBid(auction: Market, bid: Bid, tokenId: number) {
     await auction.setBid(tokenId, bid);
   }
 
@@ -151,7 +150,7 @@ describe('InvertAuction', () => {
 
     it('should revert if not called by the owner', async () => {
       await expect(
-        InvertAuctionFactory.connect(auctionAddress, otherWallet).configure(
+        MarketFactory.connect(auctionAddress, otherWallet).configure(
           mockTokenWallet.address
         )
       ).eventually.rejected;

@@ -9,9 +9,9 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {Math} from "@openzeppelin/contracts/math/Math.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Decimal} from "./Decimal.sol";
-import {InvertAuction} from "./InvertAuction.sol";
+import {Market} from "./Market.sol";
 
-contract InvertToken is ERC721Burnable {
+contract Media is ERC721Burnable {
     using Counters for Counters.Counter;
     using SafeMath for uint256;
 
@@ -57,35 +57,35 @@ contract InvertToken is ERC721Burnable {
     event TokenURIUpdated(uint256 indexed _tokenId, address owner, string  _uri);
 
     modifier onlyExistingToken (uint256 tokenId) {
-        require(_exists(tokenId), "InvertToken: Nonexistant token");
+        require(_exists(tokenId), "Media: Nonexistant media");
         _;
     }
 
     modifier onlyTokenWithContentHash (uint256 tokenId) {
-        require(tokenContentHashes[tokenId] != "", "IntertToken: token does not have hash of created content");
+        require(tokenContentHashes[tokenId] != "", "Media: token does not have hash of created content");
         _;
     }
 
     modifier onlyApprovedOrOwner(address spender, uint256 tokenId) {
-        require(_isApprovedOrOwner(spender, tokenId), "InvertToken: Only approved or owner");
+        require(_isApprovedOrOwner(spender, tokenId), "Media: Only approved or owner");
         _;
     }
 
     modifier onlyAuction() {
-        require(msg.sender == _auctionContract, "Invert: only auction contract");
+        require(msg.sender == _auctionContract, "Media: only market contract");
         _;
     }
 
     modifier onlyOwner(uint256 tokenId) {
         require(_exists(tokenId), "ERC721: operator query for nonexistent token");
         address owner = ownerOf(tokenId);
-        require(msg.sender == owner, "InvertToken: caller is not owner");
+        require(msg.sender == owner, "Media: caller is not owner");
         _;
     }
 
-    constructor(address auctionContract) public ERC721("Invert", "INVERT") {
+    constructor(address auctionContract) public ERC721("Media", "MEDIA") {
         _auctionContract = auctionContract;
-        DOMAIN_SEPARATOR = initDomainSeparator("Invert", "1");
+        DOMAIN_SEPARATOR = initDomainSeparator("Media", "1");
     }
 
     /**
@@ -95,7 +95,7 @@ contract InvertToken is ERC721Burnable {
     *
     * See {ERC721-_safeMint}.
     */
-    function mint(address creator, string memory tokenURI, bytes32 contentHash, InvertAuction.BidShares memory bidShares) public {
+    function mint(address creator, string memory tokenURI, bytes32 contentHash, Market.BidShares memory bidShares) public {
         // We cannot just use balanceOf to create the new tokenId because tokens
         // can be burned (destroyed), so we need a separate counter.
         uint256 tokenId = _tokenIdTracker.current();
@@ -108,7 +108,7 @@ contract InvertToken is ERC721Burnable {
 
         tokenCreators[tokenId] = creator;
         previousTokenOwners[tokenId] = creator;
-        InvertAuction(_auctionContract).addBidShares(tokenId, bidShares);
+        Market(_auctionContract).addBidShares(tokenId, bidShares);
     }
 
     function auctionTransfer(uint256 tokenId, address bidder)
@@ -119,32 +119,32 @@ contract InvertToken is ERC721Burnable {
         _safeTransfer(ownerOf(tokenId), bidder, tokenId, '');
     }
 
-    function setAsk(uint256 tokenId, InvertAuction.Ask memory ask) public
+    function setAsk(uint256 tokenId, Market.Ask memory ask) public
         onlyApprovedOrOwner(msg.sender, tokenId)
         onlyExistingToken(tokenId)
     {
-        InvertAuction(_auctionContract).setAsk(tokenId, ask);
+        Market(_auctionContract).setAsk(tokenId, ask);
     }
 
-    function setBid(uint256 tokenId, InvertAuction.Bid memory bid)
+    function setBid(uint256 tokenId, Market.Bid memory bid)
         onlyExistingToken(tokenId)
         public
     {
-        InvertAuction(_auctionContract).setBid(tokenId, bid);
+        Market(_auctionContract).setBid(tokenId, bid);
     }
 
     function removeBid(uint256 tokenId)
         public
     {
-        InvertAuction(_auctionContract).removeBid(tokenId, msg.sender);
+        Market(_auctionContract).removeBid(tokenId, msg.sender);
     }
 
-    function acceptBid(uint256 tokenId, address bidder)
+    function acceptBid(uint256 tokenId, Market.Bid memory bid)
         onlyExistingToken(tokenId)
         onlyApprovedOrOwner(msg.sender, tokenId)
         public
     {
-        InvertAuction(_auctionContract).acceptBid(tokenId, bidder);
+        Market(_auctionContract).acceptBid(tokenId, bid);
     }
 
     function updateTokenURI(uint256 tokenId, string memory tokenURI)
@@ -168,8 +168,8 @@ contract InvertToken is ERC721Burnable {
         onlyExistingToken(tokenId)
         external
     {
-        require(deadline == 0 || deadline >= block.timestamp, "InvertToken: Permit expired");
-        require(spender != address(0), "InvertToken: spender cannot be 0x0");
+        require(deadline == 0 || deadline >= block.timestamp, "Media: Permit expired");
+        require(spender != address(0), "Media: spender cannot be 0x0");
 
         bytes32 digest = keccak256(
             abi.encodePacked(
@@ -191,7 +191,7 @@ contract InvertToken is ERC721Burnable {
 
         require(
             recoveredAddress != address(0)  && ownerOf(tokenId) == recoveredAddress,
-            "InvertToken: Signature invalid"
+            "Media: Signature invalid"
         );
 
         _approve(spender, tokenId);
