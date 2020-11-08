@@ -8,16 +8,13 @@ import { ethers, Wallet } from 'ethers';
 import { AddressZero } from '@ethersproject/constants';
 import Decimal from '../utils/Decimal';
 import { BigNumber, BigNumberish, Bytes } from 'ethers';
-import {
-  BaseErc20Factory,
-  InvertToken,
-  InvertTokenFactory,
-} from '../typechain';
+import { InvertToken, InvertTokenFactory } from '../typechain';
 import {
   approveCurrency,
   deployCurrency,
   getBalance,
   mintCurrency,
+  signPermit,
   toNumWei,
 } from './utils';
 import { sha256 } from 'ethers/lib/utils';
@@ -26,7 +23,6 @@ chai.use(asPromised);
 
 let provider = new JsonRpcProvider();
 let blockchain = new Blockchain(provider);
-
 
 let contentHex: string;
 let contentHash: string;
@@ -62,7 +58,7 @@ describe('InvertToken', () => {
     ownerWallet,
     prevOwnerWallet,
     otherWallet,
-    nonBidderWallet
+    nonBidderWallet,
   ] = generatedWallets(provider);
 
   let defaultBidShares = {
@@ -186,7 +182,7 @@ describe('InvertToken', () => {
 
   beforeEach(async () => {
     await blockchain.resetAsync();
-    contentHex = ethers.utils.formatBytes32String("invert");
+    contentHex = ethers.utils.formatBytes32String('invert');
     contentHash = await sha256(contentHex);
     contentHashBytes = ethers.utils.arrayify(contentHash);
     zeroContentHashBytes = ethers.utils.arrayify(ethers.constants.HashZero);
@@ -199,7 +195,6 @@ describe('InvertToken', () => {
   });
 
   describe('#mint', () => {
-
     beforeEach(async () => {
       await deploy();
     });
@@ -214,10 +209,11 @@ describe('InvertToken', () => {
           'www.example.com',
           contentHashBytes,
           {
-          prevOwner: Decimal.new(10),
-          creator: Decimal.new(90),
-          owner: Decimal.new(0),
-        })
+            prevOwner: Decimal.new(10),
+            creator: Decimal.new(90),
+            owner: Decimal.new(0),
+          }
+        )
       ).fulfilled;
 
       const t = await token.tokenByIndex(0);
@@ -247,7 +243,8 @@ describe('InvertToken', () => {
             prevOwner: Decimal.new(10),
             creator: Decimal.new(90),
             owner: Decimal.new(0),
-          })
+          }
+        )
       ).fulfilled;
 
       const t = await token.tokenByIndex(0);
@@ -274,10 +271,11 @@ describe('InvertToken', () => {
           'www.example.com',
           contentHashBytes,
           {
-          prevOwner: Decimal.new(15),
-          owner: Decimal.new(15),
-          creator: Decimal.new(15),
-        })
+            prevOwner: Decimal.new(15),
+            owner: Decimal.new(15),
+            creator: Decimal.new(15),
+          }
+        )
       ).rejected;
     });
 
@@ -285,12 +283,7 @@ describe('InvertToken', () => {
       const token = await tokenAs(creatorWallet);
 
       await expect(
-        mint(
-          token,
-          creatorWallet.address,
-          '222',
-          contentHashBytes,
-          {
+        mint(token, creatorWallet.address, '222', contentHashBytes, {
           prevOwner: Decimal.new(99),
           owner: Decimal.new(1),
           creator: Decimal.new(1),
@@ -433,7 +426,7 @@ describe('InvertToken', () => {
       await setupAuction(currencyAddr);
     });
 
-    it("should revert if the bidder has not placed a bid", async () => {
+    it('should revert if the bidder has not placed a bid', async () => {
       const token = await tokenAs(nonBidderWallet);
 
       await expect(removeBid(token, 0)).rejected;
@@ -565,7 +558,7 @@ describe('InvertToken', () => {
     });
   });
 
-  describe("#updateTokenURI", async () => {
+  describe('#updateTokenURI', async () => {
     let currencyAddr: string;
 
     beforeEach(async () => {
@@ -574,13 +567,13 @@ describe('InvertToken', () => {
       await setupAuction(currencyAddr);
     });
 
-    it("should revert if the token does not exist", async () => {
+    it('should revert if the token does not exist', async () => {
       const token = await tokenAs(creatorWallet);
 
-      await expect(token.updateTokenURI(1, "blah blah")).rejected;
+      await expect(token.updateTokenURI(1, 'blah blah')).rejected;
     });
 
-    it("should revert if the token does not have a content hash", async () => {
+    it('should revert if the token does not have a content hash', async () => {
       const token = await tokenAs(creatorWallet);
 
       await expect(
@@ -593,7 +586,8 @@ describe('InvertToken', () => {
             prevOwner: Decimal.new(10),
             creator: Decimal.new(90),
             owner: Decimal.new(0),
-          })
+          }
+        )
       ).fulfilled;
 
       const owner = await token.ownerOf(1);
@@ -601,21 +595,62 @@ describe('InvertToken', () => {
 
       await expect(owner).eq(creatorWallet.address);
       await expect(tokenContentHash).eq(ethers.constants.HashZero);
-      await expect(token.updateTokenURI(1, "blah blah")).rejected;
+      await expect(token.updateTokenURI(1, 'blah blah')).rejected;
     });
 
-    it("should revert if the caller is not the owner of the token", async () => {
+    it('should revert if the caller is not the owner of the token', async () => {
       const token = await tokenAs(otherWallet);
 
-      await expect(token.updateTokenURI(0, "blah blah")).rejected;
+      await expect(token.updateTokenURI(0, 'blah blah')).rejected;
     });
 
-    it("should set the tokenURI to the URI passed", async () => {
+    it('should set the tokenURI to the URI passed', async () => {
       const token = await tokenAs(ownerWallet);
-      await expect(token.updateTokenURI(0, "blah blah")).fulfilled;
+      await expect(token.updateTokenURI(0, 'blah blah')).fulfilled;
 
       const tokenURI = await token.tokenURI(0);
-      expect(tokenURI).eq("blah blah");
-    })
+      expect(tokenURI).eq('blah blah');
+    });
+  });
+
+  describe('#permit', () => {
+    let currency: string;
+
+    beforeEach(async () => {
+      await deploy();
+      currency = await deployCurrency();
+      await setupAuction(currency);
+    });
+
+    it('should allow a wallet to set themselves to approved with a valid signature', async () => {
+      const token = await tokenAs(otherWallet);
+      const sig = await signPermit(
+        ownerWallet,
+        otherWallet.address,
+        token.address,
+        0,
+        // NOTE: We set the chain ID to 1 because of an error with ganache-core: https://github.com/trufflesuite/ganache-core/issues/515
+        1
+      );
+      await expect(
+        token.permit(otherWallet.address, 0, sig.deadline, sig.v, sig.r, sig.s)
+      ).fulfilled;
+      await expect(token.getApproved(0)).eventually.eq(otherWallet.address);
+    });
+
+    it('should not allow a wallet to set themselves to approved with an invalid signature', async () => {
+      const token = await tokenAs(otherWallet);
+      const sig = await signPermit(
+        ownerWallet,
+        bidderWallet.address,
+        token.address,
+        0,
+        1
+      );
+      await expect(
+        token.permit(otherWallet.address, 0, sig.deadline, sig.v, sig.r, sig.s)
+      ).rejected;
+      await expect(token.getApproved(0)).eventually.eq(AddressZero);
+    });
   });
 });

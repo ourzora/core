@@ -146,7 +146,7 @@ contract InvertToken is ERC721Burnable {
     {
         InvertAuction(_auctionContract).acceptBid(tokenId, bidder);
     }
-    
+
     function updateTokenURI(uint256 tokenId, string memory tokenURI)
         public
         onlyExistingToken(tokenId)
@@ -156,7 +156,6 @@ contract InvertToken is ERC721Burnable {
         _setTokenURI(tokenId, tokenURI);
         emit TokenURIUpdated(tokenId, msg.sender, tokenURI);
     }
-
 
     function permit(
         address spender,
@@ -223,6 +222,7 @@ contract InvertToken is ERC721Burnable {
                 address(this)
             )
         );
+    }
 
     function _setContentHash(uint256 tokenId, bytes32 contentHash)
         internal
