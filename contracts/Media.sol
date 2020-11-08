@@ -76,10 +76,20 @@ contract Media is ERC721Burnable {
         _;
     }
 
-    modifier onlyOwner(uint256 tokenId) {
+    modifier onlyTokenCreator(uint256 tokenId) {
+        require(tokenCreators[tokenId] == msg.sender, "Media: caller must be creator of token");
+        _;
+    }
+
+    modifier onlyTokenOwner(uint256 tokenId) {
         require(_exists(tokenId), "ERC721: operator query for nonexistent token");
         address owner = ownerOf(tokenId);
         require(msg.sender == owner, "Media: caller is not owner");
+        _;
+    }
+
+    modifier onlyTokenCreated(uint256 tokenId) {
+        require(_tokenIdTracker.current() >= tokenId, "Media: token with that id does not exist");
         _;
     }
 
@@ -119,7 +129,8 @@ contract Media is ERC721Burnable {
         _safeTransfer(ownerOf(tokenId), bidder, tokenId, '');
     }
 
-    function setAsk(uint256 tokenId, Market.Ask memory ask) public
+    function setAsk(uint256 tokenId, Market.Ask memory ask)
+        public
         onlyApprovedOrOwner(msg.sender, tokenId)
         onlyExistingToken(tokenId)
     {
@@ -129,12 +140,14 @@ contract Media is ERC721Burnable {
     function setBid(uint256 tokenId, Market.Bid memory bid)
         onlyExistingToken(tokenId)
         public
+        onlyExistingToken(tokenId)
     {
         Market(_auctionContract).setBid(tokenId, bid);
     }
 
     function removeBid(uint256 tokenId)
         public
+        onlyTokenCreated(tokenId)
     {
         Market(_auctionContract).removeBid(tokenId, msg.sender);
     }
@@ -147,11 +160,20 @@ contract Media is ERC721Burnable {
         Market(_auctionContract).acceptBid(tokenId, bid);
     }
 
+    function burn(uint256 tokenId)
+        public
+        override
+        onlyTokenOwner(tokenId)
+        onlyTokenCreator(tokenId)
+    {
+        _burn(tokenId);
+    }
+
     function updateTokenURI(uint256 tokenId, string memory tokenURI)
         public
         onlyExistingToken(tokenId)
         onlyTokenWithContentHash(tokenId)
-        onlyOwner(tokenId)
+        onlyTokenOwner(tokenId)
     {
         _setTokenURI(tokenId, tokenURI);
         emit TokenURIUpdated(tokenId, msg.sender, tokenURI);
@@ -197,6 +219,49 @@ contract Media is ERC721Burnable {
         _approve(spender, tokenId);
     }
 
+    function tokenURI(uint256 tokenId)
+        public
+        view
+        override
+        onlyTokenCreated(tokenId)
+        returns (string memory)
+    {
+        string memory _tokenURI = _tokenURIs[tokenId];
+
+        // If there is no base URI, return the token URI.
+        if (bytes(_baseURI).length == 0) {
+            return _tokenURI;
+        }
+        // If both are set, concatenate the baseURI and tokenURI (via abi.encodePacked).
+        if (bytes(_tokenURI).length > 0) {
+            return string(abi.encodePacked(_baseURI, _tokenURI));
+        }
+        // If there is a baseURI but no tokenURI, concatenate the tokenID to the baseURI.
+        return string(abi.encodePacked(_baseURI, tokenId.toString()));
+    }
+
+    function _setContentHash(uint256 tokenId, bytes32 contentHash)
+    internal
+    virtual
+    onlyExistingToken(tokenId)
+    {
+        tokenContentHashes[tokenId] = contentHash;
+    }
+
+    function _burn(uint256 tokenId)
+        internal
+        override
+    {
+        address owner = ownerOf(tokenId);
+
+        _beforeTokenTransfer(owner, address(0), tokenId);
+        _approve(address(0), tokenId);
+        _holderTokens[owner].remove(tokenId);
+        _tokenOwners.remove(tokenId);
+
+        emit Transfer(owner, address(0), tokenId);
+    }
+
     /**
      * @dev Initializes EIP712 DOMAIN_SEPARATOR based on the current contract and chain ID.
      */
@@ -222,13 +287,5 @@ contract Media is ERC721Burnable {
                 address(this)
             )
         );
-    }
-
-    function _setContentHash(uint256 tokenId, bytes32 contentHash)
-        internal
-        virtual
-        onlyExistingToken(tokenId)
-    {
-        tokenContentHashes[tokenId] = contentHash;
     }
 }

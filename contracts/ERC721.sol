@@ -30,10 +30,10 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata, IERC721Enumerable 
     bytes4 private constant _ERC721_RECEIVED = 0x150b7a02;
 
     // Mapping from holder address to their (enumerable) set of owned tokens
-    mapping (address => EnumerableSet.UintSet) private _holderTokens;
+    mapping (address => EnumerableSet.UintSet) internal _holderTokens;
 
     // Enumerable mapping from token ids to their owners
-    EnumerableMap.UintToAddressMap private _tokenOwners;
+    EnumerableMap.UintToAddressMap internal _tokenOwners;
 
     // Mapping from token ID to approved address
     mapping (uint256 => address) private _tokenApprovals;
@@ -48,10 +48,10 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata, IERC721Enumerable 
     string private _symbol;
 
     // Optional mapping for token URIs
-    mapping (uint256 => string) private _tokenURIs;
+    mapping (uint256 => string) internal _tokenURIs;
 
     // Base URI
-    string private _baseURI;
+    string internal _baseURI;
 
     /*
      *     bytes4(keccak256('balanceOf(address)')) == 0x70a08231
@@ -133,7 +133,7 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata, IERC721Enumerable 
     /**
      * @dev See {IERC721Metadata-tokenURI}.
      */
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
 
         string memory _tokenURI = _tokenURIs[tokenId];
