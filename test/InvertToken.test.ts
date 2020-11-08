@@ -3,12 +3,12 @@ import asPromised from 'chai-as-promised';
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { Blockchain } from '../utils/Blockchain';
 import { generatedWallets } from '../utils/generatedWallets';
-import { InvertAuctionFactory } from '../typechain/InvertAuctionFactory';
+import { MarketFactory } from '../typechain/MarketFactory';
 import { ethers, Wallet } from 'ethers';
 import { AddressZero } from '@ethersproject/constants';
 import Decimal from '../utils/Decimal';
 import { BigNumber, BigNumberish, Bytes } from 'ethers';
-import { InvertToken, InvertTokenFactory } from '../typechain';
+import { Media, MediaFactory } from '../typechain';
 import {
   approveCurrency,
   deployCurrency,
@@ -50,7 +50,7 @@ type Bid = {
   sellOnFee: { value: BigNumberish };
 };
 
-describe('InvertToken', () => {
+describe('Media', () => {
   let [
     deployerWallet,
     bidderWallet,
@@ -84,15 +84,15 @@ describe('InvertToken', () => {
   let tokenAddress: string;
 
   async function tokenAs(wallet: Wallet) {
-    return InvertTokenFactory.connect(tokenAddress, wallet);
+    return MediaFactory.connect(tokenAddress, wallet);
   }
   async function deploy() {
     const auction = await (
-      await new InvertAuctionFactory(deployerWallet).deploy()
+      await new MarketFactory(deployerWallet).deploy()
     ).deployed();
     auctionAddress = auction.address;
     const token = await (
-      await new InvertTokenFactory(deployerWallet).deploy(auction.address)
+      await new MediaFactory(deployerWallet).deploy(auction.address)
     ).deployed();
     tokenAddress = token.address;
 
@@ -100,7 +100,7 @@ describe('InvertToken', () => {
   }
 
   async function mint(
-    token: InvertToken,
+    token: Media,
     creator: string,
     tokenURI: string,
     contentHash: Bytes,
@@ -109,19 +109,19 @@ describe('InvertToken', () => {
     return token.mint(creator, tokenURI, contentHash, shares);
   }
 
-  async function setAsk(token: InvertToken, tokenId: number, ask: Ask) {
+  async function setAsk(token: Media, tokenId: number, ask: Ask) {
     return token.setAsk(tokenId, ask);
   }
 
-  async function setBid(token: InvertToken, bid: Bid, tokenId: number) {
+  async function setBid(token: Media, bid: Bid, tokenId: number) {
     return token.setBid(tokenId, bid);
   }
 
-  async function removeBid(token: InvertToken, tokenId: number) {
+  async function removeBid(token: Media, tokenId: number) {
     return token.removeBid(tokenId);
   }
 
-  async function acceptBid(token: InvertToken, tokenId: number, bid: Bid) {
+  async function acceptBid(token: Media, tokenId: number, bid: Bid) {
     return token.acceptBid(tokenId, bid);
   }
 
@@ -480,10 +480,7 @@ describe('InvertToken', () => {
 
     it('should accept a bid', async () => {
       const token = await tokenAs(ownerWallet);
-      const auction = await InvertAuctionFactory.connect(
-        auctionAddress,
-        bidderWallet
-      );
+      const auction = await MarketFactory.connect(auctionAddress, bidderWallet);
       const asBidder = await tokenAs(bidderWallet);
       const bid = {
         ...defaultBid(currencyAddr, bidderWallet.address),

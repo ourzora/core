@@ -1,4 +1,4 @@
-import { BaseErc20Factory, InvertTokenFactory } from '../typechain';
+import { BaseErc20Factory, MediaFactory } from '../typechain';
 import { BigNumber, BigNumberish, Wallet } from 'ethers';
 import { MaxUint256, AddressZero } from '@ethersproject/constants';
 import { generatedWallets } from '../utils/generatedWallets';
@@ -70,7 +70,7 @@ export async function signPermit(
 ) {
   return new Promise<Permit>(async (res, reject) => {
     let nonce;
-    const tokenContract = InvertTokenFactory.connect(tokenAddress, owner);
+    const tokenContract = MediaFactory.connect(tokenAddress, owner);
 
     try {
       nonce = (

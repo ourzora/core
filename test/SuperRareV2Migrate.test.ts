@@ -8,10 +8,13 @@ import { SuperRareV2MigrateFactory } from '../typechain/SuperRareV2MigrateFactor
 import { CreatorMigrationStorageFactory } from '../typechain/CreatorMigrationStorageFactory';
 import { BigNumber, Bytes, Wallet } from 'ethers';
 import Decimal from '../utils/Decimal';
-import { InvertAuctionFactory, InvertToken, InvertTokenFactory, SuperRareV2Factory } from '../typechain';
 import {
-  toNumWei,
-} from './utils';
+  MarketFactory,
+  Media,
+  MediaFactory,
+  SuperRareV2Factory,
+} from '../typechain';
+import { toNumWei } from './utils';
 
 chai.use(asPromised);
 
@@ -25,77 +28,79 @@ let superRareV2ContractAddress: string;
 
 type DecimalValue = { value: BigNumber };
 type PartialBidShare = {
-  prevOwner: DecimalValue,
-  owner: DecimalValue
+  prevOwner: DecimalValue;
+  owner: DecimalValue;
 };
 
-describe("SuperRareV2Migrate", () => {
-  let [
-    deployerWallet,
-    userWallet,
-    otherWallet,
-  ] = generatedWallets(provider);
+describe('SuperRareV2Migrate', () => {
+  let [deployerWallet, userWallet, otherWallet] = generatedWallets(provider);
 
   let defaultTokenId = 0;
 
   let defaultPBS = {
     prevOwner: Decimal.new(10),
-    owner: Decimal.new(80)
+    owner: Decimal.new(80),
   };
 
   function revert(message: string) {
     return `VM Exception while processing transaction: revert ${message}`;
   }
 
-  async function deployMigrator(storageAddress: string, superrareAddress: string, invertAddress: string){
-    const superRareMigrate = await(
+  async function deployMigrator(
+    storageAddress: string,
+    superrareAddress: string,
+    invertAddress: string
+  ) {
+    const superRareMigrate = await (
       await new SuperRareV2MigrateFactory(deployerWallet).deploy(
         storageAddress,
         superrareAddress,
         invertAddress
       )
-    ).deployed()
+    ).deployed();
     superRareMigrateAddress = superRareMigrate.address;
   }
 
-  async function deployStorage(){
+  async function deployStorage() {
     const storageContract = await (
       await new CreatorMigrationStorageFactory(deployerWallet).deploy()
-    ).deployed()
+    ).deployed();
     storageContractAddress = storageContract.address;
   }
 
-  async function deployInvertAuction(){
+  async function deployMarket() {
     const invertAuction = await (
-      await new InvertAuctionFactory(deployerWallet).deploy()
-    ).deployed()
+      await new MarketFactory(deployerWallet).deploy()
+    ).deployed();
     invertAuctionAddress = invertAuction.address;
   }
 
-  async function configureInvertAuction(){
-    await InvertAuctionFactory.connect(invertAuctionAddress, deployerWallet).configure(invertContractAddress);
+  async function configureMarket() {
+    await MarketFactory.connect(invertAuctionAddress, deployerWallet).configure(
+      invertContractAddress
+    );
   }
 
-  async function deployInvertToken(){
+  async function deployMedia() {
     const invertContract = await (
-      await new InvertTokenFactory(deployerWallet).deploy(invertAuctionAddress)
-    ).deployed()
+      await new MediaFactory(deployerWallet).deploy(invertAuctionAddress)
+    ).deployed();
     invertContractAddress = invertContract.address;
   }
 
-  async function deploySuperRareV2(){
+  async function deploySuperRareV2() {
     const superRare = await new SuperRareV2Factory(deployerWallet).deploy(
-      "test",
-      "TEST",
-    )
+      'test',
+      'TEST'
+    );
     superRareV2ContractAddress = superRare.address;
   }
 
-  async function deployRequiredContracts(){
+  async function deployRequiredContracts() {
     // Deploy and Configure Invert Contracts
-    await deployInvertAuction()
-    await deployInvertToken();
-    await configureInvertAuction();
+    await deployMarket();
+    await deployMedia();
+    await configureMarket();
 
     // Deploy SuperRare
     await deploySuperRareV2();
@@ -109,40 +114,51 @@ describe("SuperRareV2Migrate", () => {
     );
   }
 
-  async function approveSuperRareToken(approvedAddress: string, tokenId: number){
-    await SuperRareV2Factory.connect(superRareV2ContractAddress, userWallet).approve(
-      approvedAddress,
-      tokenId
-    );
+  async function approveSuperRareToken(
+    approvedAddress: string,
+    tokenId: number
+  ) {
+    await SuperRareV2Factory.connect(
+      superRareV2ContractAddress,
+      userWallet
+    ).approve(approvedAddress, tokenId);
   }
 
-  async function addSuperRareToken(){
-    await SuperRareV2Factory.connect(superRareV2ContractAddress, userWallet).addNewToken(
-      "superrare.com"
-    );
+  async function addSuperRareToken() {
+    await SuperRareV2Factory.connect(
+      superRareV2ContractAddress,
+      userWallet
+    ).addNewToken('superrare.com');
   }
 
   async function initSuperRareWhitelist(whitelistedAddresses: string[]) {
-    await SuperRareV2Factory.connect(superRareV2ContractAddress, deployerWallet).initWhitelist(whitelistedAddresses);
+    await SuperRareV2Factory.connect(
+      superRareV2ContractAddress,
+      deployerWallet
+    ).initWhitelist(whitelistedAddresses);
   }
 
-  async function submitApproval(wallet: Wallet, creatorAddress: string, signature: Bytes){
+  async function submitApproval(
+    wallet: Wallet,
+    creatorAddress: string,
+    signature: Bytes
+  ) {
     return CreatorMigrationStorageFactory.connect(
       storageContractAddress,
       wallet
-    ).submitApproval(
-      creatorAddress,
-      signature
-    );
+    ).submitApproval(creatorAddress, signature);
   }
 
-  async function migrate(wallet: Wallet, tokenId: number, creatorAddress: string, pbs: PartialBidShare){
-    await SuperRareV2MigrateFactory.connect(superRareMigrateAddress, wallet).migrate(
-      tokenId,
-      creatorAddress,
-      pbs,
-      { gasLimit: 1000000 }
-      );
+  async function migrate(
+    wallet: Wallet,
+    tokenId: number,
+    creatorAddress: string,
+    pbs: PartialBidShare
+  ) {
+    await SuperRareV2MigrateFactory.connect(
+      superRareMigrateAddress,
+      wallet
+    ).migrate(tokenId, creatorAddress, pbs, { gasLimit: 1000000 });
   }
 
   beforeEach(async () => {
@@ -150,18 +166,19 @@ describe("SuperRareV2Migrate", () => {
   });
 
   describe('#constructor', () => {
-
-    it("deploys successfully", async () => {
-      await expect(deployInvertAuction()).eventually.fulfilled;
-      await expect(deployInvertToken()).eventually.fulfilled;
+    it('deploys successfully', async () => {
+      await expect(deployMarket()).eventually.fulfilled;
+      await expect(deployMedia()).eventually.fulfilled;
       await expect(deploySuperRareV2()).eventually.fulfilled;
       await expect(deployStorage()).eventually.fulfilled;
 
-      await expect(deployMigrator(
-        storageContractAddress,
-        superRareV2ContractAddress,
-        invertContractAddress
-      )).eventually.fulfilled;
+      await expect(
+        deployMigrator(
+          storageContractAddress,
+          superRareV2ContractAddress,
+          invertContractAddress
+        )
+      ).eventually.fulfilled;
     });
   });
 
@@ -172,66 +189,98 @@ describe("SuperRareV2Migrate", () => {
       await deployRequiredContracts();
     });
 
-    it("reverts if the caller does not own the NFT", async () => {
+    it('reverts if the caller does not own the NFT', async () => {
       await initSuperRareWhitelist(whitelist);
       await addSuperRareToken();
 
-      await expect(migrate(otherWallet, defaultTokenId, userWallet.address, defaultPBS)).rejectedWith(
-        revert("SuperRareV2Migrate: you must own this NFT to attempt to migrate it to Zora")
+      await expect(
+        migrate(otherWallet, defaultTokenId, userWallet.address, defaultPBS)
+      ).rejectedWith(
+        revert(
+          'SuperRareV2Migrate: you must own this NFT to attempt to migrate it to Zora'
+        )
       );
     });
 
-    it("reverts if the caller has not approved the contract to transfer the NFT", async () => {
+    it('reverts if the caller has not approved the contract to transfer the NFT', async () => {
       await initSuperRareWhitelist(whitelist);
       await addSuperRareToken();
 
-      await expect(migrate(userWallet, defaultTokenId, userWallet.address, defaultPBS)).rejectedWith(
-        revert("SuperRareV2Migrate: you must approve() this contract to give it permission to withdraw this NFT")
+      await expect(
+        migrate(userWallet, defaultTokenId, userWallet.address, defaultPBS)
+      ).rejectedWith(
+        revert(
+          'SuperRareV2Migrate: you must approve() this contract to give it permission to withdraw this NFT'
+        )
       );
     });
 
-    it("reverts if the creator has not yet approved the migration", async () => {
+    it('reverts if the creator has not yet approved the migration', async () => {
       await initSuperRareWhitelist(whitelist);
       await addSuperRareToken();
       await approveSuperRareToken(superRareMigrateAddress, defaultTokenId);
 
-      await expect(migrate(userWallet, defaultTokenId, userWallet.address, defaultPBS)).rejectedWith(
-        revert("SuperRareV2Migrate: creator has not yet approved the migration of their creations to Zora")
+      await expect(
+        migrate(userWallet, defaultTokenId, userWallet.address, defaultPBS)
+      ).rejectedWith(
+        revert(
+          'SuperRareV2Migrate: creator has not yet approved the migration of their creations to Zora'
+        )
       );
     });
 
-    it("burns the NFT and mints a new Zora MediaToken™️", async () => {
+    it('burns the NFT and mints a new Zora MediaToken™️', async () => {
       await initSuperRareWhitelist(whitelist);
       await addSuperRareToken();
       await approveSuperRareToken(superRareMigrateAddress, defaultTokenId);
 
-      const creatorSig = await signMessage("invert", userWallet);
-      await expect(submitApproval(otherWallet, userWallet.address, creatorSig)).fulfilled;
+      const creatorSig = await signMessage('invert', userWallet);
+      await expect(submitApproval(otherWallet, userWallet.address, creatorSig))
+        .fulfilled;
 
-      const legacyURI = await SuperRareV2Factory.connect(superRareV2ContractAddress, userWallet).tokenURI(defaultTokenId);
+      const legacyURI = await SuperRareV2Factory.connect(
+        superRareV2ContractAddress,
+        userWallet
+      ).tokenURI(defaultTokenId);
 
-      const beforeUserOwned = await SuperRareV2Factory.connect(superRareV2ContractAddress, userWallet).balanceOf(userWallet.address);
+      const beforeUserOwned = await SuperRareV2Factory.connect(
+        superRareV2ContractAddress,
+        userWallet
+      ).balanceOf(userWallet.address);
       expect(toNumWei(beforeUserOwned)).eq(1);
 
-      await expect(migrate(userWallet, defaultTokenId, userWallet.address, defaultPBS)).fulfilled;
+      await expect(
+        migrate(userWallet, defaultTokenId, userWallet.address, defaultPBS)
+      ).fulfilled;
 
       // verify userWallet now has a balanceOf == 0 in SuperRareV2 contract
-      const afterUserOwned = await SuperRareV2Factory.connect(superRareV2ContractAddress, userWallet).balanceOf(userWallet.address);
+      const afterUserOwned = await SuperRareV2Factory.connect(
+        superRareV2ContractAddress,
+        userWallet
+      ).balanceOf(userWallet.address);
       expect(toNumWei(afterUserOwned)).eq(0);
 
       // verify the migrate contract has a balanceOf == 0
-      const legacyOwned = await SuperRareV2Factory.connect(superRareV2ContractAddress, userWallet).balanceOf(superRareMigrateAddress);
+      const legacyOwned = await SuperRareV2Factory.connect(
+        superRareV2ContractAddress,
+        userWallet
+      ).balanceOf(superRareMigrateAddress);
       expect(toNumWei(legacyOwned)).eq(0);
 
       // verify the ownerOf(defaultTokenId) in Invert is the address that called migrate()
-      const zoraOwner = await InvertTokenFactory.connect(invertContractAddress, userWallet).ownerOf(defaultTokenId);
+      const zoraOwner = await MediaFactory.connect(
+        invertContractAddress,
+        userWallet
+      ).ownerOf(defaultTokenId);
       expect(zoraOwner).eq(userWallet.address);
 
       // verify the the tokenURI is properly ported over
       // TODO: verify this is the behavior we want..
-      const zoraURI = await InvertTokenFactory.connect(invertContractAddress, userWallet).tokenURI(defaultTokenId);
+      const zoraURI = await MediaFactory.connect(
+        invertContractAddress,
+        userWallet
+      ).tokenURI(defaultTokenId);
       expect(zoraURI).eq(legacyURI);
     });
-
   });
 });

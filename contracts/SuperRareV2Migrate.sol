@@ -4,10 +4,10 @@ pragma experimental ABIEncoderV2;
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {IZoraMigrate} from "./interfaces/IZoraMigrate.sol";
 import {ICreatorMigrationStorage} from "./interfaces/ICreatorMigrationStorage.sol";
-import {IInvertToken} from "./interfaces/IInvertToken.sol";
+import {IMedia} from "./interfaces/IMedia.sol";
 import {ISuperRareV2} from "./interfaces/ISuperRareV2.sol";
 import {Decimal} from "./Decimal.sol";
-import {InvertAuction} from "./InvertAuction.sol";
+import {Market} from "./Market.sol";
 
 /**
 * This implementation only works for SuperRareV2
@@ -25,7 +25,7 @@ contract SuperRareV2Migrate is IZoraMigrate, IERC721Receiver {
     }
 
     ICreatorMigrationStorage private _storage;
-    IInvertToken private _invert;
+    IMedia private _invert;
     ISuperRareV2 private _superrare;
 
     bytes4 private constant _ERC721_RECEIVED = 0x150b7a02;
@@ -34,7 +34,7 @@ contract SuperRareV2Migrate is IZoraMigrate, IERC721Receiver {
     constructor(address storageAddress, address superrareAddress, address invertAddress) public {
         _storage = ICreatorMigrationStorage(storageAddress);
         _superrare = ISuperRareV2(superrareAddress);
-        _invert = IInvertToken(invertAddress);
+        _invert = IMedia(invertAddress);
     }
 
     modifier onlyOwnerAndAllowance(address owner, uint256 tokenId) {
@@ -55,7 +55,7 @@ contract SuperRareV2Migrate is IZoraMigrate, IERC721Receiver {
 
         string memory tokenURI = _superrare.tokenURI(tokenId);
 
-        InvertAuction.BidShares memory bidShare = InvertAuction.BidShares({
+        Market.BidShares memory bidShare = Market.BidShares({
             creator: defaultCreatorShare,
             owner: pbs.owner,
             prevOwner: pbs.prevOwner
