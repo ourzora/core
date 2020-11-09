@@ -27,6 +27,9 @@ let blockchain = new Blockchain(provider);
 let contentHex: string;
 let contentHash: string;
 let contentHashBytes: Bytes;
+let otherContentHex: string;
+let otherContentHash: string;
+let otherContentHashBytes: Bytes;
 let zeroContentHashBytes: Bytes;
 
 type DecimalValue = { value: BigNumber };
@@ -187,6 +190,9 @@ describe('Media', () => {
     contentHex = ethers.utils.formatBytes32String('invert');
     contentHash = await sha256(contentHex);
     contentHashBytes = ethers.utils.arrayify(contentHash);
+    otherContentHex = ethers.utils.formatBytes32String("otherthing");
+    otherContentHash = await sha256(otherContentHex);
+    otherContentHashBytes = ethers.utils.arrayify(otherContentHash);
     zeroContentHashBytes = ethers.utils.arrayify(ethers.constants.HashZero);
   });
 
@@ -232,7 +238,7 @@ describe('Media', () => {
       expect(tokenContentHash).eq(contentHash);
     });
 
-    it('should set the contentHash as zero bits if one is not specified', async () => {
+    it('should revert if an empty content hash is specified', async () => {
       const token = await tokenAs(creatorWallet);
 
       await expect(
@@ -247,20 +253,39 @@ describe('Media', () => {
             owner: Decimal.new(0),
           }
         )
+      ).rejectedWith("Media: content hash must not be empty");
+    });
+
+    it("should revert if the content hash already exists for a created token", async () => {
+      const token = await tokenAs(creatorWallet);
+
+      await expect(
+        mint(
+          token,
+          creatorWallet.address,
+          'www.example.com',
+          contentHashBytes,
+          {
+            prevOwner: Decimal.new(10),
+            creator: Decimal.new(90),
+            owner: Decimal.new(0),
+          }
+        )
       ).fulfilled;
 
-      const t = await token.tokenByIndex(0);
-      const ownerT = await token.tokenOfOwnerByIndex(creatorWallet.address, 0);
-      const ownerOf = await token.ownerOf(0);
-      const creator = await token.tokenCreators(0);
-      const prevOwner = await token.previousTokenOwners(0);
-      const tokenContentHash = await token.tokenContentHashes(0);
-
-      expect(toNumWei(t)).eq(toNumWei(ownerT));
-      expect(ownerOf).eq(creatorWallet.address);
-      expect(creator).eq(creatorWallet.address);
-      expect(prevOwner).eq(creatorWallet.address);
-      expect(tokenContentHash).eq(ethers.constants.HashZero);
+      await expect(
+        mint(
+          token,
+          creatorWallet.address,
+          'www.example.com',
+          contentHashBytes,
+          {
+            prevOwner: Decimal.new(10),
+            creator: Decimal.new(90),
+            owner: Decimal.new(0),
+          }
+        )
+      ).rejectedWith("Media: a token has already been created with this content hash");
     });
 
     it('should not be able to mint a token with bid shares summing to less than 100', async () => {
@@ -333,7 +358,7 @@ describe('Media', () => {
         await tokenAs(creatorWallet),
         creatorWallet.address,
         '1111',
-        contentHashBytes,
+        otherContentHashBytes,
         defaultBidShares
       );
       currencyAddr = await deployCurrency();
@@ -614,31 +639,6 @@ describe('Media', () => {
       const token = await tokenAs(creatorWallet);
 
       await expect(token.updateTokenURI(1, 'blah blah')).rejectedWith("ERC721: operator query for nonexistent token");
-    });
-
-    it('should revert if the token does not have a content hash', async () => {
-      const token = await tokenAs(creatorWallet);
-
-      await expect(
-        mint(
-          token,
-          creatorWallet.address,
-          'www.example.com',
-          zeroContentHashBytes,
-          {
-            prevOwner: Decimal.new(10),
-            creator: Decimal.new(90),
-            owner: Decimal.new(0),
-          }
-        )
-      ).fulfilled;
-
-      const owner = await token.ownerOf(1);
-      const tokenContentHash = await token.tokenContentHashes(1);
-
-      await expect(owner).eq(creatorWallet.address);
-      await expect(tokenContentHash).eq(ethers.constants.HashZero);
-      await expect(token.updateTokenURI(1, 'blah blah')).rejectedWith("Media: token does not have hash of created content");
     });
 
     it('should revert if the caller is not the owner of the token', async () => {
