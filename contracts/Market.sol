@@ -33,8 +33,8 @@ contract Market {
 
     modifier onlyTransferAllowanceAndSolvent (address spender, address currencyAddress, uint256 amount) {
         IERC20 token = IERC20(currencyAddress);
-        require(token.allowance(spender, address(this)) >= amount, "Market: allowance not high enough to transfer token.");
-        require(token.balanceOf(spender) >= amount, "Market: Not enough funds to transfer token.");
+        require(token.allowance(spender, address(this)) >= amount, "Market: allowance not high enough to transfer token");
+        require(token.balanceOf(spender) >= amount, "Market: Not enough funds to transfer token");
         _;
     }
 
@@ -136,8 +136,13 @@ contract Market {
     {
         require(
             isValidBid(tokenId, ask.amount),
-            "Market: Ask too small for share splitting"
+            "Market: Ask invalid for share splitting"
         );
+
+        uint256 hundredPercent = uint256(100).mul(Decimal.BASE);
+        BidShares memory bidShares = _bidShares[tokenId];
+        require(bidShares.creator.value.add(ask.sellOnFee.value) <= uint256(100).mul(Decimal.BASE), "Market: invalid sell on fee");
+
         _tokenAsks[tokenId] = ask;
     }
 
@@ -203,8 +208,8 @@ contract Market {
     * owner or an approved address. See {_finalizeNFTTransfer}
     */
     function acceptBid(uint256 tokenId, Bid calldata expectedBid)
-    onlyTokenCaller
-    external
+        onlyTokenCaller
+        external
     {
         Bid memory bid = _tokenBidders[tokenId][expectedBid.bidder];
         require(bid.amount > 0, "Market: cannot accept bid of 0");
