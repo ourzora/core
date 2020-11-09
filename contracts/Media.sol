@@ -57,7 +57,7 @@ contract Media is ERC721Burnable {
     event TokenURIUpdated(uint256 indexed _tokenId, address owner, string  _uri);
 
     modifier onlyExistingToken (uint256 tokenId) {
-        require(_exists(tokenId), "Media: Nonexistant media");
+        require(_exists(tokenId), "ERC721: operator query for nonexistent token");
         _;
     }
 
@@ -77,14 +77,15 @@ contract Media is ERC721Burnable {
     }
 
     modifier onlyTokenCreator(uint256 tokenId) {
-        require(tokenCreators[tokenId] == msg.sender, "Media: caller must be creator of token");
+        require(_exists(tokenId), "ERC721: operator query for nonexistent token");
+        require(tokenCreators[tokenId] == msg.sender, "Media: caller is not creator of token");
         _;
     }
 
     modifier onlyTokenOwner(uint256 tokenId) {
         require(_exists(tokenId), "ERC721: operator query for nonexistent token");
         address owner = ownerOf(tokenId);
-        require(msg.sender == owner, "Media: caller is not owner");
+        require(msg.sender == owner, "Media: caller is not owner of token");
         _;
     }
 
@@ -138,7 +139,6 @@ contract Media is ERC721Burnable {
     }
 
     function setBid(uint256 tokenId, Market.Bid memory bid)
-        onlyExistingToken(tokenId)
         public
         onlyExistingToken(tokenId)
     {
