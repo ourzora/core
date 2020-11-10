@@ -30,6 +30,9 @@ contract Media is ERC721Burnable {
     // Mapping from token id to sha256 hash of content
     mapping(uint256 => bytes32) public tokenContentHashes;
 
+    // Mapping from contentHash to bool
+    mapping(bytes32 => bool) private _contentHashes;
+
     //keccak256("Permit(address spender,uint256 tokenId,uint256 nonce,uint256 deadline)");
     bytes32 PERMIT_TYPEHASH = 0x49ecf333e5b8c95c40fdafc95c1ad136e8914a8fb55e9dc8bb01eaa83a2df9ad;
 
@@ -94,6 +97,12 @@ contract Media is ERC721Burnable {
         _;
     }
 
+    modifier onlyValidContentHash(bytes32 contentHash) {
+        require(contentHash != "", "Media: content hash must not be empty");
+        require(_contentHashes[contentHash] == false, "Media: a token has already been created with this content hash");
+        _;
+    }
+
     constructor(address auctionContract) public ERC721("Media", "MEDIA") {
         _auctionContract = auctionContract;
         DOMAIN_SEPARATOR = initDomainSeparator("Media", "1");
@@ -106,7 +115,16 @@ contract Media is ERC721Burnable {
     *
     * See {ERC721-_safeMint}.
     */
-    function mint(address creator, string memory tokenURI, bytes32 contentHash, Market.BidShares memory bidShares) public {
+    function mint(
+        address creator,
+        string memory tokenURI,
+        bytes32 contentHash,
+        Market.BidShares
+        memory bidShares
+    )
+        public
+        onlyValidContentHash(contentHash)
+    {
         // We cannot just use balanceOf to create the new tokenId because tokens
         // can be burned (destroyed), so we need a separate counter.
         uint256 tokenId = _tokenIdTracker.current();
@@ -116,6 +134,7 @@ contract Media is ERC721Burnable {
         _setContentHash(tokenId, contentHash);
         _setTokenURI(tokenId, tokenURI);
         _creatorTokens[creator].add(tokenId);
+        _contentHashes[contentHash] = true;
 
         tokenCreators[tokenId] = creator;
         previousTokenOwners[tokenId] = creator;
@@ -133,7 +152,6 @@ contract Media is ERC721Burnable {
     function setAsk(uint256 tokenId, Market.Ask memory ask)
         public
         onlyApprovedOrOwner(msg.sender, tokenId)
-        onlyExistingToken(tokenId)
     {
         Market(_auctionContract).setAsk(tokenId, ask);
     }
@@ -153,7 +171,6 @@ contract Media is ERC721Burnable {
     }
 
     function acceptBid(uint256 tokenId, Market.Bid memory bid)
-        onlyExistingToken(tokenId)
         onlyApprovedOrOwner(msg.sender, tokenId)
         public
     {
@@ -171,9 +188,8 @@ contract Media is ERC721Burnable {
 
     function updateTokenURI(uint256 tokenId, string memory tokenURI)
         public
-        onlyExistingToken(tokenId)
-        onlyTokenWithContentHash(tokenId)
         onlyTokenOwner(tokenId)
+        onlyTokenWithContentHash(tokenId)
     {
         _setTokenURI(tokenId, tokenURI);
         emit TokenURIUpdated(tokenId, msg.sender, tokenURI);
@@ -241,9 +257,9 @@ contract Media is ERC721Burnable {
     }
 
     function _setContentHash(uint256 tokenId, bytes32 contentHash)
-    internal
-    virtual
-    onlyExistingToken(tokenId)
+        internal
+        virtual
+        onlyExistingToken(tokenId)
     {
         tokenContentHashes[tokenId] = contentHash;
     }
@@ -269,8 +285,8 @@ contract Media is ERC721Burnable {
         string memory name,
         string memory version
     )
-    internal
-    returns (bytes32)
+        internal
+        returns (bytes32)
     {
         uint256 chainID;
         /* solium-disable-next-line */
