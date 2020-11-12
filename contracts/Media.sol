@@ -30,6 +30,12 @@ contract Media is ERC721Burnable {
     // Mapping from token id to sha256 hash of content
     mapping(uint256 => bytes32) public tokenContentHashes;
 
+    // Mapping from token id to sha 256 hash of metadata
+    mapping(uint256 => bytes32) public tokenMetadataHashes;
+
+    // Mapping from token id to metadataURI
+    mapping(uint256 => string) private _tokenMetadataURIs;
+
     // Mapping from contentHash to bool
     mapping(bytes32 => bool) private _contentHashes;
 
@@ -40,6 +46,16 @@ contract Media is ERC721Burnable {
 
     // Mapping from address to token id to permit nonce
     mapping (address => mapping (uint256 => uint256)) public permitNonces;
+
+    /*
+     *     bytes4(keccak256('name()')) == 0x06fdde03
+     *     bytes4(keccak256('symbol()')) == 0x95d89b41
+     *     bytes4(keccak256('tokenURI(uint256)')) == 0xc87b56dd
+     *     bytes4(keccak256('tokenMetadataURI(uint256)')) == 0x157c3df9
+     *
+     *     => 0x06fdde03 ^ 0x95d89b41 ^ 0xc87b56dd ^ 0x157c3df9 == 0x4e222e66
+     */
+    bytes4 private constant _INTERFACE_ID_ERC721_METADATA = 0x4e222e66;
 
     Counters.Counter private _tokenIdTracker;
 
@@ -56,8 +72,9 @@ contract Media is ERC721Burnable {
         uint256 currencyDecimals
     );
 
-    // Event indicating uri was updated.
     event TokenURIUpdated(uint256 indexed _tokenId, address owner, string  _uri);
+
+    event TokenMetadataURIUpdated(uint256 indexed _tokenId, address owner, string _uri);
 
     modifier onlyExistingToken (uint256 tokenId) {
         require(_exists(tokenId), "ERC721: operator query for nonexistent token");
@@ -66,6 +83,11 @@ contract Media is ERC721Burnable {
 
     modifier onlyTokenWithContentHash (uint256 tokenId) {
         require(tokenContentHashes[tokenId] != "", "Media: token does not have hash of created content");
+        _;
+    }
+
+    modifier onlyTokenWithMetadataHash (uint256 tokenId) {
+        require(tokenMetadataHashes[tokenId] != "", "Media: token does not have hash of its metadata");
         _;
     }
 
@@ -97,14 +119,14 @@ contract Media is ERC721Burnable {
         _;
     }
 
-    modifier onlyValidContentHash(bytes32 contentHash) {
-        require(contentHash != "", "Media: content hash must not be empty");
-        require(_contentHashes[contentHash] == false, "Media: a token has already been created with this content hash");
+    modifier onlyValidURI(string memory uri) {
+        require(bytes(uri).length != 0, "Media: specified uri must be non-empty");
         _;
     }
 
     constructor(address auctionContract) public ERC721("Media", "MEDIA") {
         _auctionContract = auctionContract;
+        _registerInterface(_INTERFACE_ID_ERC721_METADATA);
         DOMAIN_SEPARATOR = initDomainSeparator("Media", "1");
     }
 
@@ -118,20 +140,28 @@ contract Media is ERC721Burnable {
     function mint(
         address creator,
         string memory tokenURI,
+        string memory metadataURI,
         bytes32 contentHash,
-        Market.BidShares
-        memory bidShares
+        bytes32 metadataHash,
+        Market.BidShares memory bidShares
     )
         public
-        onlyValidContentHash(contentHash)
+        onlyValidURI(tokenURI)
+        onlyValidURI(metadataURI)
     {
+        require(contentHash != "", "Media: content hash must be non-empty");
+        require(_contentHashes[contentHash] == false, "Media: a token has already been created with this content hash");
+        require(metadataHash != "", "Media: metadata hash  must be non-empty");
+
         // We cannot just use balanceOf to create the new tokenId because tokens
         // can be burned (destroyed), so we need a separate counter.
         uint256 tokenId = _tokenIdTracker.current();
 
         _safeMint(creator, tokenId);
         _tokenIdTracker.increment();
-        _setContentHash(tokenId, contentHash);
+        _setTokenContentHash(tokenId, contentHash);
+        _setTokenMetadataHash(tokenId, metadataHash);
+        _setTokenMetadataURI(tokenId, metadataURI);
         _setTokenURI(tokenId, tokenURI);
         _creatorTokens[creator].add(tokenId);
         _contentHashes[contentHash] = true;
@@ -190,9 +220,20 @@ contract Media is ERC721Burnable {
         public
         onlyTokenOwner(tokenId)
         onlyTokenWithContentHash(tokenId)
+        onlyValidURI(tokenURI)
     {
         _setTokenURI(tokenId, tokenURI);
         emit TokenURIUpdated(tokenId, msg.sender, tokenURI);
+    }
+
+    function updateTokenMetadataURI(uint256 tokenId, string memory metadataURI)
+        public
+        onlyTokenOwner(tokenId)
+        onlyTokenWithMetadataHash(tokenId)
+        onlyValidURI(metadataURI)
+    {
+        _setTokenMetadataURI(tokenId, metadataURI);
+        emit TokenMetadataURIUpdated(tokenId, msg.sender, metadataURI);
     }
 
     function permit(
@@ -256,12 +297,37 @@ contract Media is ERC721Burnable {
         return string(abi.encodePacked(_baseURI, tokenId.toString()));
     }
 
-    function _setContentHash(uint256 tokenId, bytes32 contentHash)
+    function tokenMetadataURI(uint256 tokenId)
+        public
+        view
+        onlyTokenCreated(tokenId)
+        returns (string memory)
+    {
+        return _tokenMetadataURIs[tokenId];
+    }
+
+    function _setTokenContentHash(uint256 tokenId, bytes32 contentHash)
         internal
         virtual
         onlyExistingToken(tokenId)
     {
         tokenContentHashes[tokenId] = contentHash;
+    }
+
+    function _setTokenMetadataHash(uint256 tokenId, bytes32 metadataHash)
+        internal
+        virtual
+        onlyExistingToken(tokenId)
+    {
+        tokenMetadataHashes[tokenId] = metadataHash;
+    }
+
+    function _setTokenMetadataURI(uint256 tokenId, string memory metadataURI)
+        internal
+        virtual
+        onlyExistingToken(tokenId)
+    {
+        _tokenMetadataURIs[tokenId] = metadataURI;
     }
 
     function _burn(uint256 tokenId)
