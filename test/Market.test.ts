@@ -153,7 +153,7 @@ describe('Market', () => {
         MarketFactory.connect(auctionAddress, otherWallet).configure(
           mockTokenWallet.address
         )
-      ).eventually.rejectedWith("Market: Only owner");
+      ).eventually.rejectedWith('Market: Only owner');
     });
 
     it('should be callable by the owner', async () => {
@@ -166,7 +166,9 @@ describe('Market', () => {
     it('should reject if called twice', async () => {
       await configure();
 
-      await expect(configure()).eventually.rejectedWith("Market: Already configured");
+      await expect(configure()).eventually.rejectedWith(
+        'Market: Already configured'
+      );
     });
   });
 
@@ -179,8 +181,9 @@ describe('Market', () => {
     it('should reject if not called by the token address', async () => {
       const auction = await auctionAs(otherWallet);
 
-      await expect(addBidShares(auction, defaultTokenId, defaultBidShares))
-        .rejectedWith("Market: Only token contract");
+      await expect(
+        addBidShares(auction, defaultTokenId, defaultBidShares)
+      ).rejectedWith('Market: Only token contract');
     });
 
     it('should set the bid shares if called by the token address', async () => {
@@ -208,8 +211,9 @@ describe('Market', () => {
         creator: Decimal.new(101),
       };
 
-      await expect(addBidShares(auction, defaultTokenId, invalidBidShares))
-        .rejectedWith("Market: Invalid bid shares, must sum to 100");
+      await expect(
+        addBidShares(auction, defaultTokenId, invalidBidShares)
+      ).rejectedWith('Market: Invalid bid shares, must sum to 100');
     });
   });
 
@@ -222,7 +226,9 @@ describe('Market', () => {
     it('should reject if not called by the token address', async () => {
       const auction = await auctionAs(otherWallet);
 
-      await expect(setAsk(auction, defaultTokenId, defaultAsk)).rejectedWith("Market: Only token contract");
+      await expect(setAsk(auction, defaultTokenId, defaultAsk)).rejectedWith(
+        'Market: Only token contract'
+      );
     });
 
     it('should set the ask if called by the token address', async () => {
@@ -248,12 +254,14 @@ describe('Market', () => {
           currency: AddressZero,
           sellOnFee: Decimal.new(0),
         })
-      ).rejectedWith("Market: Ask invalid for share splitting");
+      ).rejectedWith('Market: Ask invalid for share splitting');
     });
 
     it("should reject if the bid shares haven't been set yet", async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await expect(setAsk(auction, defaultTokenId, defaultAsk)).rejectedWith("Market: Invalid bid shares for token");
+      await expect(setAsk(auction, defaultTokenId, defaultAsk)).rejectedWith(
+        'Market: Invalid bid shares for token'
+      );
     });
   });
 
@@ -275,12 +283,16 @@ describe('Market', () => {
 
     it('should revert if not called by the token contract', async () => {
       const auction = await auctionAs(otherWallet);
-      await expect(setBid(auction, defaultBid, defaultTokenId)).rejectedWith("Market: Only token contract");
+      await expect(setBid(auction, defaultBid, defaultTokenId)).rejectedWith(
+        'Market: Only token contract'
+      );
     });
 
     it('should revert if the bidder does not have a high enough allowance for their bidding currency', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await expect(setBid(auction, defaultBid, defaultTokenId)).rejectedWith("Market: allowance not high enough to transfer token");
+      await expect(setBid(auction, defaultBid, defaultTokenId)).rejectedWith(
+        'Market: allowance not high enough to transfer token'
+      );
     });
 
     it('should revert if the bidder does not have enough tokens to bid with', async () => {
@@ -288,7 +300,9 @@ describe('Market', () => {
       await mintCurrency(currency, defaultBid.bidder, defaultBid.amount - 1);
       await approveCurrency(currency, auction.address, bidderWallet);
 
-      await expect(setBid(auction, defaultBid, defaultTokenId)).rejectedWith("Market: Not enough funds to transfer token");
+      await expect(setBid(auction, defaultBid, defaultTokenId)).rejectedWith(
+        'Market: Not enough funds to transfer token'
+      );
     });
 
     it('should accept a valid bid', async () => {

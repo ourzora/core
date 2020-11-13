@@ -21,8 +21,8 @@ const config: HardhatUserConfig = {
       },
     ],
     overrides: {
-      "contracts/external/SuperRareV2.sol":  {
-        version: "0.4.24",
+      'contracts/external/SuperRareV2.sol': {
+        version: '0.4.24',
       },
     },
   },

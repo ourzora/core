@@ -31,7 +31,10 @@ export class Blockchain {
     }
   }
 
-  private async sendJSONRpcRequestAsync(method: string, params: any[]): Promise<any> {
+  private async sendJSONRpcRequestAsync(
+    method: string,
+    params: any[]
+  ): Promise<any> {
     return this._provider.send(method, params);
   }
 }

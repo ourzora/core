@@ -27,6 +27,7 @@
     "hardhat-deploy": "^0.7.0-beta.25",
     "hardhat-typechain": "^0.3.3",
     "next": "9.5.5",
+    "prettier-plugin-solidity": "^1.0.0-alpha.60",
     "react": "17.0.0",
     "react-dom": "17.0.0",
     "ts-generator": "^0.1.1"
@@ -48,6 +49,8 @@
     "ethers": "^5.0.19",
     "fs-extra": "^9.0.1",
     "ganache-cli": "^6.12.0",
+    "husky": ">=4",
+    "lint-staged": ">=10",
     "minimist": "^1.2.5",
     "prettier": "^2.1.2",
     "system-commands": "^1.1.7",
@@ -55,5 +58,13 @@
     "typechain": "^3.0.0",
     "typechain-target-ethers": "^1.0.4",
     "typescript": "^4.0.3"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{js,css,md,sol}": "prettier --write"
   }
 }
