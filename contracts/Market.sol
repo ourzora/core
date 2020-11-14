@@ -14,6 +14,35 @@ contract Market {
     using Counters for Counters.Counter;
     using SafeMath for uint256;
 
+    struct Bid {
+        // Amount of the currency being bid
+        uint256 amount;
+        // Address to the ERC20 token being used to bid
+        address currency;
+        // Address of the bidder
+        address bidder;
+        // % of the next sale to award the previous owner
+        Decimal.D256 sellOnFee;
+    }
+
+    struct Ask {
+        // Amount of the currency being asked
+        uint256 amount;
+        // Address to the ERC20 token being asked
+        address currency;
+        // % of the next sale to award the previous owner
+        Decimal.D256 sellOnFee;
+    }
+
+    struct BidShares {
+        // % of sale value that goes to the _previous_ owner of the nft
+        Decimal.D256 prevOwner;
+        // % of sale value that goes to the original creator of the nft
+        Decimal.D256 creator;
+        // % of sale value that goes to the seller (current owner) of the nft
+        Decimal.D256 owner;
+    }
+
     uint256 constant ONE_HUNDRED = 100;
 
     address public tokenContract;
@@ -64,42 +93,11 @@ contract Market {
         _configured = true;
     }
 
-    event BidCreated(uint256 tokenId, address bidder);
-    event AskCreated(
-        uint256 tokenId,
-        address owner,
-        uint256 amount,
-        address currency
-    );
-
-    struct Bid {
-        // Amount of the currency being bid
-        uint256 amount;
-        // Address to the ERC20 token being used to bid
-        address currency;
-        // Address of the bidder
-        address bidder;
-        // % of the next sale to award the previous owner
-        Decimal.D256 sellOnFee;
-    }
-
-    struct Ask {
-        // Amount of the currency being asked
-        uint256 amount;
-        // Address to the ERC20 token being asked
-        address currency;
-        // % of the next sale to award the previous owner
-        Decimal.D256 sellOnFee;
-    }
-
-    struct BidShares {
-        // % of sale value that goes to the _previous_ owner of the nft
-        Decimal.D256 prevOwner;
-        // % of sale value that goes to the original creator of the nft
-        Decimal.D256 creator;
-        // % of sale value that goes to the seller (current owner) of the nft
-        Decimal.D256 owner;
-    }
+    event BidCreated(uint256 tokenId, Bid bid);
+    event BidRemoved(uint256 tokenId, Bid bid);
+    event BidFinalized(uint256 tokenId, Bid bid);
+    event AskCreated(uint256 tokenId, Ask ask);
+    event BidShareUpdated(uint256 tokenId, BidShares bidShares);
 
     function bidForTokenBidder(uint256 tokenId, address bidder)
         external
@@ -134,6 +132,7 @@ contract Market {
             "Market: Invalid bid shares, must sum to 100"
         );
         _bidShares[tokenId] = bidShares;
+        emit BidShareUpdated(tokenId, bidShares);
     }
 
     /**
@@ -155,6 +154,7 @@ contract Market {
         );
 
         _tokenAsks[tokenId] = ask;
+        emit AskCreated(tokenId, ask);
     }
 
     /**
@@ -186,12 +186,8 @@ contract Market {
             token.transferFrom(bid.bidder, address(this), bid.amount),
             "Market: transfer failed"
         );
-        _tokenBidders[tokenId][bid.bidder] = Bid(
-            bid.amount,
-            bid.currency,
-            bid.bidder,
-            bid.sellOnFee
-        );
+        _tokenBidders[tokenId][bid.bidder] = bid;
+        emit BidCreated(tokenId, bid);
 
         // If the bid is over the ask price and the currency is the same, automatically accept the bid
         if (
@@ -217,6 +213,7 @@ contract Market {
 
         IERC20 token = IERC20(bidCurrency);
 
+        emit BidRemoved(tokenId, bid);
         delete _tokenBidders[tokenId][bidder];
         require(
             token.transfer(bidder, bidAmount),
@@ -372,6 +369,7 @@ contract Market {
         );
         bidShares.prevOwner = bid.sellOnFee;
 
+        emit BidFinalized(tokenId, bid);
         delete _tokenAsks[tokenId];
         delete _tokenBidders[tokenId][bidder];
     }
