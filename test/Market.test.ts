@@ -203,6 +203,29 @@ describe('Market', () => {
       expect(tokenBidShares[2]).eq(toNumEther(defaultBidShares.owner.value));
     });
 
+    it('should emit an event when bid shares are updated', async () => {
+      const auction = await auctionAs(mockTokenWallet);
+
+      const block = await provider.getBlockNumber();
+      await addBidShares(auction, defaultTokenId, defaultBidShares);
+      const events = await auction.queryFilter(
+        auction.filters.BidShareUpdated(null, null),
+        block
+      );
+      expect(events.length).eq(1);
+      const logDescription = auction.interface.parseLog(events[0]);
+      expect(toNumWei(logDescription.args.tokenId)).to.eq(defaultTokenId);
+      expect(toNumWei(logDescription.args.bidShares.prevOwner.value)).to.eq(
+        toNumWei(defaultBidShares.prevOwner.value)
+      );
+      expect(toNumWei(logDescription.args.bidShares.creator.value)).to.eq(
+        toNumWei(defaultBidShares.creator.value)
+      );
+      expect(toNumWei(logDescription.args.bidShares.owner.value)).to.eq(
+        toNumWei(defaultBidShares.owner.value)
+      );
+    });
+
     it('should reject if the bid shares are invalid', async () => {
       const auction = await auctionAs(mockTokenWallet);
       const invalidBidShares = {
@@ -242,6 +265,27 @@ describe('Market', () => {
 
       expect(toNumWei(ask.amount)).to.eq(defaultAsk.amount);
       expect(ask.currency).to.eq(defaultAsk.currency);
+    });
+
+    it('should emit an event if the ask is updated', async () => {
+      const auction = await auctionAs(mockTokenWallet);
+      await addBidShares(auction, defaultTokenId, defaultBidShares);
+
+      const block = await provider.getBlockNumber();
+      await setAsk(auction, defaultTokenId, defaultAsk);
+      const events = await auction.queryFilter(
+        auction.filters.AskCreated(null, null),
+        block
+      );
+
+      expect(events.length).eq(1);
+      const logDescription = auction.interface.parseLog(events[0]);
+      expect(toNumWei(logDescription.args.tokenId)).to.eq(defaultTokenId);
+      expect(toNumWei(logDescription.args.ask.amount)).to.eq(defaultAsk.amount);
+      expect(logDescription.args.ask.currency).to.eq(defaultAsk.currency);
+      expect(toNumWei(logDescription.args.ask.sellOnFee)).to.eq(
+        toNumWei(defaultAsk.sellOnFee.value)
+      );
     });
 
     it('should reject if the ask is too low', async () => {
@@ -388,6 +432,29 @@ describe('Market', () => {
         )
       );
       await expect(afterBalance).eq(bidderBalance - defaultBid.amount * 2);
+    });
+
+    it('should emit a bid event', async () => {
+      const auction = await auctionAs(mockTokenWallet);
+      await addBidShares(auction, defaultTokenId, defaultBidShares);
+      await mintCurrency(currency, defaultBid.bidder, 5000);
+      await approveCurrency(currency, auction.address, bidderWallet);
+
+      const block = await provider.getBlockNumber();
+      await setBid(auction, defaultBid, defaultTokenId);
+      const events = await auction.queryFilter(
+        auction.filters.BidCreated(null, null),
+        block
+      );
+
+      expect(events.length).eq(1);
+      const logDescription = auction.interface.parseLog(events[0]);
+      expect(toNumWei(logDescription.args.tokenId)).to.eq(defaultTokenId);
+      expect(toNumWei(logDescription.args.bid.amount)).to.eq(defaultBid.amount);
+      expect(logDescription.args.bid.currency).to.eq(defaultBid.currency);
+      expect(toNumWei(logDescription.args.bid.sellOnFee.value)).to.eq(
+        toNumWei(defaultBid.sellOnFee.value)
+      );
     });
   });
 });

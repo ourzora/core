@@ -674,6 +674,29 @@ describe('Media', () => {
       expect(toNumWei(bidShares.creator.value)).eq(10 * 10 ** 18);
     });
 
+    it('should emit an event if the bid is accepted', async () => {
+      const asBidder = await tokenAs(bidderWallet);
+      const token = await tokenAs(ownerWallet);
+      const auction = await MarketFactory.connect(auctionAddress, bidderWallet);
+      const bid = defaultBid(currencyAddr, bidderWallet.address);
+      const block = await provider.getBlockNumber();
+      await setBid(asBidder, bid, 0);
+      await token.acceptBid(0, bid);
+      const events = await auction.queryFilter(
+        auction.filters.BidFinalized(null, null),
+        block
+      );
+      expect(events.length).eq(1);
+      const logDescription = auction.interface.parseLog(events[0]);
+      expect(toNumWei(logDescription.args.tokenId)).to.eq(0);
+      expect(toNumWei(logDescription.args.bid.amount)).to.eq(bid.amount);
+      expect(logDescription.args.bid.currency).to.eq(bid.currency);
+      expect(toNumWei(logDescription.args.bid.sellOnFee.value)).to.eq(
+        toNumWei(bid.sellOnFee.value)
+      );
+      expect(logDescription.args.bid.bidder).to.eq(bid.bidder);
+    });
+
     it('should revert if not called by the owner', async () => {
       const token = await tokenAs(otherWallet);
 
