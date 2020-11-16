@@ -14,6 +14,10 @@ contract Market {
     using Counters for Counters.Counter;
     using SafeMath for uint256;
 
+    /* *******
+     * STRUCTS
+     * *******
+     */
     struct Bid {
         // Amount of the currency being bid
         uint256 amount;
@@ -43,10 +47,29 @@ contract Market {
         Decimal.D256 owner;
     }
 
+    /* *******
+     * Events
+     * *******
+     */
+    event BidCreated(uint256 tokenId, Bid bid);
+    event BidRemoved(uint256 tokenId, Bid bid);
+    event BidFinalized(uint256 tokenId, Bid bid);
+    event AskCreated(uint256 tokenId, Ask ask);
+    event BidShareUpdated(uint256 tokenId, BidShares bidShares);
+
+    /* *******
+     * Globals
+     * *******
+     */
     uint256 constant ONE_HUNDRED = 100;
 
+    // Address of the media contract that can call this market
     address public tokenContract;
+
+    // Deployment Address
     address private _owner;
+
+    // True if the token contract has been set, false otherwise
     bool private _configured;
 
     // Mapping from token to mapping from bidder to bid
@@ -58,6 +81,10 @@ contract Market {
     // Mapping from token to the current ask for the token
     mapping(uint256 => Ask) private _tokenAsks;
 
+    /* *********
+     * Modifiers
+     * *********
+     */
     modifier onlyTransferAllowanceAndSolvent(
         address spender,
         address currencyAddress,
@@ -80,25 +107,10 @@ contract Market {
         _;
     }
 
-    constructor() public {
-        _owner = msg.sender;
-        _configured = false;
-    }
-
-    function configure(address tokenContractAddress) public {
-        require(msg.sender == _owner, "Market: Only owner");
-        require(_configured == false, "Market: Already configured");
-
-        tokenContract = tokenContractAddress;
-        _configured = true;
-    }
-
-    event BidCreated(uint256 tokenId, Bid bid);
-    event BidRemoved(uint256 tokenId, Bid bid);
-    event BidFinalized(uint256 tokenId, Bid bid);
-    event AskCreated(uint256 tokenId, Ask ask);
-    event BidShareUpdated(uint256 tokenId, BidShares bidShares);
-
+    /* ****************
+     * View Functions
+     * ****************
+     */
     function bidForTokenBidder(uint256 tokenId, address bidder)
         external
         view
@@ -123,6 +135,118 @@ contract Market {
         return _bidShares[tokenId];
     }
 
+    function isValidBid(uint256 tokenId, uint256 bidAmount)
+        public
+        view
+        returns (bool)
+    {
+        return bidAmount != 0 && ((bidAmount % minBidForToken(tokenId)) == 0);
+    }
+
+    /**
+     * @dev Validates that the bid shares provided sum to 100
+     */
+    function isValidBidShares(BidShares memory bidShares)
+        public
+        pure
+        returns (bool)
+    {
+        uint256 hundredPercent = uint256(100).mul(Decimal.BASE);
+        uint256 creatorShare = bidShares.creator.value;
+        uint256 ownerShare = bidShares.owner.value;
+        uint256 prevOwnerShare = bidShares.prevOwner.value;
+        uint256 shareSum = creatorShare.add(ownerShare).add(prevOwnerShare);
+        return shareSum == hundredPercent;
+    }
+
+    function _splitShare(Decimal.D256 memory sharePercentage, Bid memory bid)
+        public
+        pure
+        returns (uint256)
+    {
+        return Decimal.mul(bid.amount, sharePercentage).div(100);
+    }
+
+    /**
+     * @dev Given a token id, calculate the minimum bid amount required such that the bid shares can be split exactly.
+     * For example, if the bid fee % is all whole units, the minimum amount would be 100
+     * if the bid fee % has one decimal place , the minimum amount would be 1000
+     */
+    function minBidForToken(uint256 tokenId) public view returns (uint256) {
+        BidShares memory bidShares = _bidShares[tokenId];
+
+        require(
+            isValidBidShares(bidShares),
+            "Market: Invalid bid shares for token"
+        );
+
+        uint256 creatorMinCommonDenominator = 0;
+        uint256 ownerMinCommonDenominator = 0;
+        uint256 prevOwnerMinCommonDenominator = 0;
+
+        for (uint256 i = Decimal.BASE_POW; i >= 0; i--) {
+            if (bidShares.creator.value % uint256(10**i) == 0) {
+                creatorMinCommonDenominator = uint256(ONE_HUNDRED).mul(
+                    10**(Decimal.BASE_POW - i)
+                );
+                break;
+            }
+        }
+        for (uint256 i = Decimal.BASE_POW; i >= 0; i--) {
+            if (bidShares.owner.value % uint256(10**i) == 0) {
+                ownerMinCommonDenominator = uint256(ONE_HUNDRED).mul(
+                    10**(Decimal.BASE_POW - i)
+                );
+                break;
+            }
+        }
+        for (uint256 i = Decimal.BASE_POW; i >= 0; i--) {
+            if (bidShares.prevOwner.value % uint256(10**i) == 0) {
+                prevOwnerMinCommonDenominator = uint256(ONE_HUNDRED).mul(
+                    10**(Decimal.BASE_POW - i)
+                );
+                break;
+            }
+        }
+
+        uint256 minBid =
+            Math.max(
+                Math.max(
+                    creatorMinCommonDenominator,
+                    ownerMinCommonDenominator
+                ),
+                prevOwnerMinCommonDenominator
+            );
+
+        return Math.min((ONE_HUNDRED * 10**Decimal.BASE_POW), minBid);
+    }
+
+    /* ****************
+     * Public Functions
+     * ****************
+     */
+
+    constructor() public {
+        _owner = msg.sender;
+        _configured = false;
+    }
+
+    /**
+     * @dev Sets the token contract address. This address is the only permitted address that
+     * can call the mutable functions. This method can only be called once.
+     */
+    function configure(address tokenContractAddress) public {
+        require(msg.sender == _owner, "Market: Only owner");
+        require(_configured == false, "Market: Already configured");
+
+        tokenContract = tokenContractAddress;
+        _configured = true;
+    }
+
+    /**
+     * @dev Adds bid shares for a particular tokenId. These bid shares must
+     * sum to 100.
+     */
     function addBidShares(uint256 tokenId, BidShares memory bidShares)
         public
         onlyTokenCaller
@@ -245,92 +369,11 @@ contract Market {
         _finalizeNFTTransfer(tokenId, bid.bidder);
     }
 
-    function isValidBid(uint256 tokenId, uint256 bidAmount)
-        public
-        view
-        returns (bool)
-    {
-        return bidAmount != 0 && ((bidAmount % minBidForToken(tokenId)) == 0);
-    }
-
     /**
-     * @dev Given a token id, calculate the minimum bid amount required such that the bid shares can be split exactly.
-     * For example, if the bid fee % is all whole units, the minimum amount would be 100
-     * if the bid fee % has one decimal place , the minimum amount would be 1000
+     * @dev Given a token ID and a bidder, this method transfers the value of
+     * the bid to the shareholders. It also transfers the ownership of the media
+     * to the bidder. Finally, it removes the accepted bid and the current ask.
      */
-    function minBidForToken(uint256 tokenId) public view returns (uint256) {
-        BidShares memory bidShares = _bidShares[tokenId];
-
-        require(
-            isValidBidShares(bidShares),
-            "Market: Invalid bid shares for token"
-        );
-
-        uint256 creatorMinCommonDenominator = 0;
-        uint256 ownerMinCommonDenominator = 0;
-        uint256 prevOwnerMinCommonDenominator = 0;
-
-        for (uint256 i = Decimal.BASE_POW; i >= 0; i--) {
-            if (bidShares.creator.value % uint256(10**i) == 0) {
-                creatorMinCommonDenominator = uint256(ONE_HUNDRED).mul(
-                    10**(Decimal.BASE_POW - i)
-                );
-                break;
-            }
-        }
-        for (uint256 i = Decimal.BASE_POW; i >= 0; i--) {
-            if (bidShares.owner.value % uint256(10**i) == 0) {
-                ownerMinCommonDenominator = uint256(ONE_HUNDRED).mul(
-                    10**(Decimal.BASE_POW - i)
-                );
-                break;
-            }
-        }
-        for (uint256 i = Decimal.BASE_POW; i >= 0; i--) {
-            if (bidShares.prevOwner.value % uint256(10**i) == 0) {
-                prevOwnerMinCommonDenominator = uint256(ONE_HUNDRED).mul(
-                    10**(Decimal.BASE_POW - i)
-                );
-                break;
-            }
-        }
-
-        uint256 minBid =
-            Math.max(
-                Math.max(
-                    creatorMinCommonDenominator,
-                    ownerMinCommonDenominator
-                ),
-                prevOwnerMinCommonDenominator
-            );
-
-        return Math.min((ONE_HUNDRED * 10**Decimal.BASE_POW), minBid);
-    }
-
-    /**
-     * @dev Validates that the bid shares provided sum to 100
-     */
-    function isValidBidShares(BidShares memory bidShares)
-        public
-        pure
-        returns (bool)
-    {
-        uint256 hundredPercent = uint256(100).mul(Decimal.BASE);
-        uint256 creatorShare = bidShares.creator.value;
-        uint256 ownerShare = bidShares.owner.value;
-        uint256 prevOwnerShare = bidShares.prevOwner.value;
-        uint256 shareSum = creatorShare.add(ownerShare).add(prevOwnerShare);
-        return shareSum == hundredPercent;
-    }
-
-    function _splitShare(Decimal.D256 memory sharePercentage, Bid memory bid)
-        public
-        pure
-        returns (uint256)
-    {
-        return Decimal.mul(bid.amount, sharePercentage).div(100);
-    }
-
     function _finalizeNFTTransfer(uint256 tokenId, address bidder) private {
         Bid memory bid = _tokenBidders[tokenId][bidder];
         BidShares storage bidShares = _bidShares[tokenId];

@@ -8,7 +8,8 @@ import { ethers, Wallet } from 'ethers';
 import { AddressZero } from '@ethersproject/constants';
 import Decimal from '../utils/Decimal';
 import { BigNumber, BigNumberish, Bytes } from 'ethers';
-import { Media, MediaFactory } from '../typechain';
+import { MediaFactory } from '../typechain/MediaFactory';
+import { Media } from '../typechain/Media';
 import {
   approveCurrency,
   deployCurrency,
