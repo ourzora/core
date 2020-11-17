@@ -15,6 +15,22 @@ contract Media is ERC721Burnable {
     using Counters for Counters.Counter;
     using SafeMath for uint256;
 
+    /* *******
+     * Events
+     * *******
+     */
+    event TokenURIUpdated(uint256 indexed _tokenId, address owner, string _uri);
+    event TokenMetadataURIUpdated(
+        uint256 indexed _tokenId,
+        address owner,
+        string _uri
+    );
+
+    /* *******
+     * Globals
+     * *******
+     */
+
     // Address for the auction
     address public _auctionContract;
 
@@ -60,23 +76,10 @@ contract Media is ERC721Burnable {
 
     Counters.Counter private _tokenIdTracker;
 
-    event BidCreated(uint256 tokenId, address bidder);
-
-    event AskCreated(
-        uint256 tokenId,
-        address owner,
-        uint256 amount,
-        address currency,
-        uint256 currencyDecimals
-    );
-
-    event TokenURIUpdated(uint256 indexed _tokenId, address owner, string _uri);
-
-    event TokenMetadataURIUpdated(
-        uint256 indexed _tokenId,
-        address owner,
-        string _uri
-    );
+    /* *********
+     * Modifiers
+     * *********
+     */
 
     modifier onlyExistingToken(uint256 tokenId) {
         require(
@@ -159,6 +162,52 @@ contract Media is ERC721Burnable {
         DOMAIN_SEPARATOR = initDomainSeparator("Media", "1");
     }
 
+    /* **************
+     * View Functions
+     * **************
+     */
+
+    /**
+     * @dev return the URI for a particular piece of media with the specified tokenId
+     */
+    function tokenURI(uint256 tokenId)
+        public
+        view
+        override
+        onlyTokenCreated(tokenId)
+        returns (string memory)
+    {
+        string memory _tokenURI = _tokenURIs[tokenId];
+
+        // If there is no base URI, return the token URI.
+        if (bytes(_baseURI).length == 0) {
+            return _tokenURI;
+        }
+        // If both are set, concatenate the baseURI and tokenURI (via abi.encodePacked).
+        if (bytes(_tokenURI).length > 0) {
+            return string(abi.encodePacked(_baseURI, _tokenURI));
+        }
+        // If there is a baseURI but no tokenURI, concatenate the tokenID to the baseURI.
+        return string(abi.encodePacked(_baseURI, tokenId.toString()));
+    }
+
+    /**
+     * @dev Return the metadata URI for a piece of media given the token URI
+     */
+    function tokenMetadataURI(uint256 tokenId)
+        public
+        view
+        onlyTokenCreated(tokenId)
+        returns (string memory)
+    {
+        return _tokenMetadataURIs[tokenId];
+    }
+
+    /* ****************
+     * Public Functions
+     * ****************
+     */
+
     /**
      * @dev Creates a new token for `creator`. Its token ID will be automatically
      * assigned (and available on the emitted {IERC721-Transfer} event), and the token
@@ -199,6 +248,10 @@ contract Media is ERC721Burnable {
         Market(_auctionContract).addBidShares(tokenId, bidShares);
     }
 
+    /**
+     * @dev Transfer the token with the given ID to a given address.
+     * note: This can only be called by the auction contract specified at deployment
+     */
     function auctionTransfer(uint256 tokenId, address bidder)
         public
         onlyAuction
@@ -261,6 +314,9 @@ contract Media is ERC721Burnable {
         emit TokenMetadataURIUpdated(tokenId, msg.sender, metadataURI);
     }
 
+    /**
+     * @dev EIP-712 permit method. Sets an approved spender given a valid signature
+     */
     function permit(
         address spender,
         uint256 tokenId,
@@ -303,35 +359,10 @@ contract Media is ERC721Burnable {
         _approve(spender, tokenId);
     }
 
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override
-        onlyTokenCreated(tokenId)
-        returns (string memory)
-    {
-        string memory _tokenURI = _tokenURIs[tokenId];
-
-        // If there is no base URI, return the token URI.
-        if (bytes(_baseURI).length == 0) {
-            return _tokenURI;
-        }
-        // If both are set, concatenate the baseURI and tokenURI (via abi.encodePacked).
-        if (bytes(_tokenURI).length > 0) {
-            return string(abi.encodePacked(_baseURI, _tokenURI));
-        }
-        // If there is a baseURI but no tokenURI, concatenate the tokenID to the baseURI.
-        return string(abi.encodePacked(_baseURI, tokenId.toString()));
-    }
-
-    function tokenMetadataURI(uint256 tokenId)
-        public
-        view
-        onlyTokenCreated(tokenId)
-        returns (string memory)
-    {
-        return _tokenMetadataURIs[tokenId];
-    }
+    /* *****************
+     * Private Functions
+     * *****************
+     */
 
     function _setTokenContentHash(uint256 tokenId, bytes32 contentHash)
         internal
