@@ -12,8 +12,7 @@
     "typechain": "rm -rf ./typechain && typechain --show-stack-traces --target ethers-v5 --outDir ./typechain 'artifacts/!(build-info)/**/!(*.dbg*)*.json'",
     "build:contracts": "yarn compile && yarn typechain",
     "chain": "ganache-cli --networkId 50 --accounts 20 -e 10000000000 -l 10000000 -m 'concert load couple harbor equip island argue ramp clarify fence smart topic'",
-    "watch": "ts-node scripts/watch.ts",
-    "prepublish": "yarn build:contracts && yarn test"
+    "watch": "ts-node scripts/watch.ts"
   },
   "dependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
