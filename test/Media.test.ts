@@ -1043,4 +1043,38 @@ describe('Media', () => {
       expect(supportsId).eq(false);
     });
   });
+
+  describe('#revokeApproval', async () => {
+    let currency: string;
+
+    beforeEach(async () => {
+      await deploy();
+      currency = await deployCurrency();
+      await setupAuction(currency);
+    });
+
+    it("should revert if the caller is the owner", async() => {
+      const token = await tokenAs(ownerWallet);
+      await expect(token.revokeApproval(0)).rejectedWith("Media: caller not approved address");
+    });
+
+    it("should revert if the caller is the creator", async() => {
+      const token = await tokenAs(creatorWallet);
+      await expect(token.revokeApproval(0)).rejectedWith("Media: caller not approved address");
+    });
+
+    it("should revert if the caller is neither owner, creator, or approver", async() => {
+      const token = await tokenAs(otherWallet);
+      await expect(token.revokeApproval(0)).rejectedWith("Media: caller not approved address");
+    });
+
+    it("should revoke the approval for token id if caller is approved address", async () => {
+      const token = await tokenAs(ownerWallet);
+      await token.approve(otherWallet.address, 0);
+      const otherToken = await tokenAs(otherWallet);
+      await expect(otherToken.revokeApproval(0)).fulfilled;
+      const approved = await token.getApproved(0);
+      expect(approved).eq(ethers.constants.AddressZero);
+    });
+  })
 });
