@@ -59,8 +59,6 @@ contract Media is ERC721Burnable {
     bytes32 PERMIT_TYPEHASH =
         0x49ecf333e5b8c95c40fdafc95c1ad136e8914a8fb55e9dc8bb01eaa83a2df9ad;
 
-    bytes32 public DOMAIN_SEPARATOR;
-
     // Mapping from address to token id to permit nonce
     mapping(address => mapping(uint256 => uint256)) public permitNonces;
 
@@ -137,7 +135,6 @@ contract Media is ERC721Burnable {
     constructor(address auctionContract) public ERC721("Media", "MEDIA") {
         _auctionContract = auctionContract;
         _registerInterface(_INTERFACE_ID_ERC721_METADATA);
-        DOMAIN_SEPARATOR = initDomainSeparator("Media", "1");
     }
 
     /* **************
@@ -315,12 +312,13 @@ contract Media is ERC721Burnable {
             "Media: Permit expired"
         );
         require(spender != address(0), "Media: spender cannot be 0x0");
+        bytes32 domainSeparator = initDomainSeparator("Media", "1");
 
         bytes32 digest =
             keccak256(
                 abi.encodePacked(
                     "\x19\x01",
-                    DOMAIN_SEPARATOR,
+                    domainSeparator,
                     keccak256(
                         abi.encode(
                             PERMIT_TYPEHASH,
