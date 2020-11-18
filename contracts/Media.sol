@@ -118,28 +118,6 @@ contract Media is ERC721Burnable {
         _;
     }
 
-    modifier onlyTokenCreator(uint256 tokenId) {
-        require(
-            _exists(tokenId),
-            "ERC721: operator query for nonexistent token"
-        );
-        require(
-            tokenCreators[tokenId] == msg.sender,
-            "Media: caller is not creator of token"
-        );
-        _;
-    }
-
-    modifier onlyTokenOwner(uint256 tokenId) {
-        require(
-            _exists(tokenId),
-            "ERC721: operator query for nonexistent token"
-        );
-        address owner = ownerOf(tokenId);
-        require(msg.sender == owner, "Media: caller is not owner of token");
-        _;
-    }
-
     modifier onlyTokenCreated(uint256 tokenId) {
         require(
             _tokenIdTracker.current() >= tokenId,
@@ -288,15 +266,22 @@ contract Media is ERC721Burnable {
     function burn(uint256 tokenId)
         public
         override
-        onlyTokenOwner(tokenId)
-        onlyTokenCreator(tokenId)
+        onlyExistingToken(tokenId)
+        onlyApprovedOrOwner(msg.sender, tokenId)
     {
+        address owner = ownerOf(tokenId);
+
+        require(
+            tokenCreators[tokenId] == owner,
+            "Media: owner is not creator of token"
+        );
+
         _burn(tokenId);
     }
 
     function updateTokenURI(uint256 tokenId, string memory tokenURI)
         public
-        onlyTokenOwner(tokenId)
+        onlyApprovedOrOwner(msg.sender, tokenId)
         onlyTokenWithContentHash(tokenId)
         onlyValidURI(tokenURI)
     {
@@ -306,7 +291,7 @@ contract Media is ERC721Burnable {
 
     function updateTokenMetadataURI(uint256 tokenId, string memory metadataURI)
         public
-        onlyTokenOwner(tokenId)
+        onlyApprovedOrOwner(msg.sender, tokenId)
         onlyTokenWithMetadataHash(tokenId)
         onlyValidURI(metadataURI)
     {

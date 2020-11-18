@@ -744,7 +744,23 @@ describe('Media', () => {
       );
       const token = await tokenAs(ownerWallet);
       await expect(token.burn(0)).rejectedWith(
-        'Media: caller is not creator of token'
+        'Media: owner is not creator of token'
+      );
+    });
+
+    it('should revert when the caller is approved, but the owner is not the creator', async () => {
+      const creatorToken = await tokenAs(creatorWallet);
+      await creatorToken.transferFrom(
+        creatorWallet.address,
+        ownerWallet.address,
+        0
+      );
+      const token = await tokenAs(ownerWallet);
+      await token.approve(otherWallet.address, 0);
+
+      const otherToken = await tokenAs(otherWallet);
+      await expect(otherToken.burn(0)).rejectedWith(
+        'Media: owner is not creator of token'
       );
     });
 
@@ -752,7 +768,7 @@ describe('Media', () => {
       const token = await tokenAs(otherWallet);
 
       await expect(token.burn(0)).rejectedWith(
-        'Media: caller is not owner of token'
+        'Media: Only approved or owner'
       );
     });
 
@@ -764,11 +780,37 @@ describe('Media', () => {
       );
     });
 
-    it('should clear approvals, set remove owner, but maintain tokenURI and contentHash', async () => {
+    it('should clear approvals, set remove owner, but maintain tokenURI and contentHash when the owner is creator and caller', async () => {
       const token = await tokenAs(creatorWallet);
       await expect(token.approve(otherWallet.address, 0)).fulfilled;
 
       await expect(token.burn(0)).fulfilled;
+
+      await expect(token.ownerOf(0)).rejectedWith(
+        'ERC721: owner query for nonexistent token'
+      );
+
+      const totalSupply = await token.totalSupply();
+      expect(toNumWei(totalSupply)).eq(0);
+
+      await expect(token.getApproved(0)).rejectedWith(
+        'ERC721: approved query for nonexistent token'
+      );
+
+      const tokenURI = await token.tokenURI(0);
+      expect(tokenURI).eq('www.example.com');
+
+      const contentHash = await token.tokenContentHashes(0);
+      expect(contentHash).eq(contentHash);
+    });
+
+    it('should clear approvals, set remove owner, but maintain tokenURI and contentHash when the owner is creator and caller is approved', async () => {
+      const token = await tokenAs(creatorWallet);
+      await expect(token.approve(otherWallet.address, 0)).fulfilled;
+
+      const otherToken = await tokenAs(otherWallet);
+
+      await expect(otherToken.burn(0)).fulfilled;
 
       await expect(token.ownerOf(0)).rejectedWith(
         'ERC721: owner query for nonexistent token'
@@ -806,11 +848,11 @@ describe('Media', () => {
       );
     });
 
-    it('should revert if the caller is not the owner of the token', async () => {
+    it('should revert if the caller is not the owner of the token and does not have approval', async () => {
       const token = await tokenAs(otherWallet);
 
       await expect(token.updateTokenURI(0, 'blah blah')).rejectedWith(
-        'Media: caller is not owner of token'
+        'Media: Only approved or owner'
       );
     });
 
@@ -845,13 +887,24 @@ describe('Media', () => {
       );
     });
 
-    it('should set the tokenURI to the URI passed', async () => {
+    it('should set the tokenURI to the URI passed if the msg.sender is the owner', async () => {
       const token = await tokenAs(ownerWallet);
       await expect(token.updateTokenURI(0, 'blah blah')).fulfilled;
 
       const tokenURI = await token.tokenURI(0);
       expect(tokenURI).eq('blah blah');
     });
+
+    it('should set the tokenURI to the URI passed if the msg.sender is approved', async() => {
+      const token = await tokenAs(ownerWallet);
+      await token.approve(otherWallet.address, 0);
+
+      const otherToken = await tokenAs(otherWallet);
+      await expect(otherToken.updateTokenURI(0, 'blah blah')).fulfilled;
+
+      const tokenURI = await token.tokenURI(0);
+      expect(tokenURI).eq('blah blah');
+    })
   });
 
   describe('#updateMetadataURI', async () => {
@@ -871,11 +924,11 @@ describe('Media', () => {
       );
     });
 
-    it('should revert if the caller is not the owner of the token', async () => {
+    it('should revert if the caller is not the owner of the token or approved', async () => {
       const token = await tokenAs(otherWallet);
 
       await expect(token.updateTokenMetadataURI(0, 'blah blah')).rejectedWith(
-        'Media: caller is not owner of token'
+        'Media: Only approved or owner'
       );
     });
 
@@ -910,13 +963,24 @@ describe('Media', () => {
       );
     });
 
-    it('should set the tokenMetadataURI to the URI passed', async () => {
+    it('should set the tokenMetadataURI to the URI passed if msg.sender is the owner', async () => {
       const token = await tokenAs(ownerWallet);
       await expect(token.updateTokenMetadataURI(0, 'blah blah')).fulfilled;
 
       const tokenURI = await token.tokenMetadataURI(0);
       expect(tokenURI).eq('blah blah');
     });
+
+    it('should set the tokenMetadataURI to the URI passed if the msg.sender is approved', async() => {
+      const token = await tokenAs(ownerWallet);
+      await token.approve(otherWallet.address, 0);
+
+      const otherToken = await tokenAs(otherWallet);
+      await expect(otherToken.updateTokenMetadataURI(0, 'blah blah')).fulfilled;
+
+      const tokenURI = await token.tokenMetadataURI(0);
+      expect(tokenURI).eq('blah blah');
+    })
   });
 
   describe('#permit', () => {
