@@ -800,8 +800,8 @@ describe('Media', () => {
       const tokenURI = await token.tokenURI(0);
       expect(tokenURI).eq('www.example.com');
 
-      const contentHash = await token.tokenContentHashes(0);
-      expect(contentHash).eq(contentHash);
+      const tokenContentHash = await token.tokenContentHashes(0);
+      expect(tokenContentHash).eq(contentHash);
     });
 
     it('should clear approvals, set remove owner, but maintain tokenURI and contentHash when the owner is creator and caller is approved', async () => {

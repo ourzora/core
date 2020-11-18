@@ -13,7 +13,7 @@ import { BaseErc20Factory } from '../../typechain/BaseErc20Factory';
 import { Market } from '../../typechain/Market';
 import { Media, MediaFactory, MediaProxyFactory } from '../../typechain';
 import { sha256 } from 'ethers/lib/utils';
-import { signPermit, toNumWei, Permit } from '../utils';
+import { signPermit, toNumWei, Permit, mintCurrency, approveCurrency } from '../utils';
 
 chai.use(asPromised);
 
@@ -27,22 +27,6 @@ type BidShares = {
   prevOwner: DecimalValue;
   creator: DecimalValue;
 };
-
-type ProxyPermit = {
-  spender: string,
-  tokenId: BigNumberish,
-  deadline: BigNumberish,
-  v: any,
-  r: any,
-  s: any
-}
-
-type Ask = {
-  currency: string;
-  amount: BigNumberish;
-  sellOnFee: { value: BigNumberish };
-};
-
 
 describe("MediaProxy", async () => {
 
@@ -77,6 +61,12 @@ describe("MediaProxy", async () => {
     creator: Decimal.new(10),
   };
 
+  const defaultBid = (currency: string, bidder: string) => ({
+    amount: 100,
+    currency,
+    bidder,
+    sellOnFee: Decimal.new(10),
+  });
 
   async function deployMarket() {
     const auction = await (
@@ -159,30 +149,27 @@ describe("MediaProxy", async () => {
     otherContentHex = ethers.utils.formatBytes32String('otherthing');
     otherContentHash = await sha256(otherContentHex);
     otherContentHashBytes = ethers.utils.arrayify(otherContentHash);
+
+    await deployMarket();
+    await deployMedia();
+    await configureMarket(mediaAddress);
+    await deployCurrency();
+    await deployProxy();
+
+    const media = await mediaAs(creatorWallet);
+    await mintMedia(
+      media,
+      creatorWallet.address,
+      "idk",
+      "idk2",
+      contentHashBytes,
+      metadataHashBytes,
+      defaultBidShares
+    );
   })
 
 
   describe("#setAsk", async () => {
-
-    beforeEach(async () => {
-      await deployMarket();
-      await deployMedia();
-      await configureMarket(mediaAddress);
-      await deployCurrency();
-      await deployProxy();
-
-      const media = await mediaAs(creatorWallet);
-      await mintMedia(
-        media,
-        creatorWallet.address,
-        "idk",
-        "idk2",
-        contentHashBytes,
-        metadataHashBytes,
-        defaultBidShares
-      );
-    })
-
     it("should accept valid permit, set ask on behalf of owner, then reset approvals", async () => {
       const media = await mediaAs(creatorWallet);
       const sig = await signPermit(creatorWallet, proxyAddress, mediaAddress, 0, 1);
@@ -325,10 +312,122 @@ describe("MediaProxy", async () => {
         "Media: Signature invalid"
       );
     });
-  })
+  });
 
+  describe("#updateTokenURI", async () => {
+    it("should accept a valid permit, update the token URI, and revoke its approval", async () => {
+      const media = await mediaAs(creatorWallet);
+      const sig = await signPermit(creatorWallet, proxyAddress, mediaAddress, 0, 1);
 
+      const proxyPermit = {
+        spender: proxyAddress,
+        tokenId: 0,
+        deadline: sig.deadline,
+        v: sig.v,
+        r: sig.r,
+        s: sig.s
+      }
 
-})
+      const proxy = await proxyAs(otherWallet);
+      await expect(proxy.updateTokenURI(proxyPermit, "a new token uri")).fulfilled;
+
+      await expect(media.getApproved(0)).eventually.eq(ethers.constants.AddressZero);
+      await expect(media.tokenURI(0)).eventually.eq("a new token uri");
+    });
+  });
+
+  describe("updateMetadataURI", async () => {
+    it("should accept a valid permit, update the metadata URI, and revoke its approval", async () => {
+      const media = await mediaAs(creatorWallet);
+      const sig = await signPermit(creatorWallet, proxyAddress, mediaAddress, 0, 1);
+
+      const proxyPermit = {
+        spender: proxyAddress,
+        tokenId: 0,
+        deadline: sig.deadline,
+        v: sig.v,
+        r: sig.r,
+        s: sig.s
+      }
+
+      const proxy = await proxyAs(otherWallet);
+      await expect(proxy.updateTokenMetadataURI(proxyPermit, "a new metadata uri")).fulfilled;
+
+      await expect(media.getApproved(0)).eventually.eq(ethers.constants.AddressZero);
+      await expect(media.tokenMetadataURI(0)).eventually.eq("a new metadata uri");
+    });
+  });
+
+  describe("#burn", async () => {
+    it("should accept a valid permit and burn the token id", async () => {
+      const media = await mediaAs(creatorWallet);
+      const sig = await signPermit(creatorWallet, proxyAddress, mediaAddress, 0, 1);
+
+      const proxyPermit = {
+        spender: proxyAddress,
+        tokenId: 0,
+        deadline: sig.deadline,
+        v: sig.v,
+        r: sig.r,
+        s: sig.s
+      }
+
+      const proxy = await proxyAs(otherWallet);
+      await expect(proxy.burn(proxyPermit)).fulfilled;
+
+      await expect(media.ownerOf(0)).rejectedWith(
+        'ERC721: owner query for nonexistent token'
+      );
+
+      const totalSupply = await media.totalSupply();
+      expect(toNumWei(totalSupply)).eq(0);
+
+      await expect(media.getApproved(0)).rejectedWith(
+        'ERC721: approved query for nonexistent token'
+      );
+
+      const tokenURI = await media.tokenURI(0);
+      expect(tokenURI).eq('idk2');
+
+      const metadataURI = await media.tokenMetadataURI(0);
+      expect(metadataURI).eq('idk');
+
+      const mediaContentHash = await media.tokenContentHashes(0);
+      expect(mediaContentHash).eq(contentHash);
+
+      const mediaMetadataHash = await media.tokenMetadataHashes(0);
+      expect(mediaMetadataHash).eq(metadataHash);
+    });
+  });
+
+  describe("#acceptBid", async () => {
+    it("should accept a valid permit and accept bid if exists", async () => {
+      const bidderMedia = await mediaAs(bidderWallet);
+      await mintCurrency(currencyAddress, bidderWallet.address, 100000);
+      await approveCurrency(currencyAddress, marketAddress, bidderWallet);
+
+      const bid = defaultBid(currencyAddress, bidderWallet.address);
+      await bidderMedia.setBid(0, bid);
+
+      const media = await mediaAs(creatorWallet);
+      const sig = await signPermit(creatorWallet, proxyAddress, mediaAddress, 0, 1);
+
+      const proxyPermit = {
+        spender: proxyAddress,
+        tokenId: 0,
+        deadline: sig.deadline,
+        v: sig.v,
+        r: sig.r,
+        s: sig.s
+      }
+
+      const proxy = await proxyAs(otherWallet);
+      await expect(proxy.acceptBid(proxyPermit, bid)).fulfilled;
+
+      await expect(media.ownerOf(0)).eventually.eq(bidderWallet.address);
+      await expect(media.getApproved(0)).eventually.eq(ethers.constants.AddressZero);
+    })
+  });
+});
 
 

@@ -22,34 +22,34 @@ contract MediaProxy {
     }
 
     function setAsk(Permit memory _permit, Market.Ask memory ask) public {
-        // requires permit
         applyPermit(_permit);
-
-        // setAsk
         mediaContract.setAsk(_permit.tokenId, ask);
-
-        // reset approvals?
         mediaContract.revokeApproval(_permit.tokenId);
     }
 
-//    function setBid() public {
-//
-//    }
-
-//    function acceptBid() public {
-//        // requires permit
-//    }
-//
-
-    function updateTokenURI() public {
-        // requires permit
+    function acceptBid(Permit memory _permit, Market.Bid memory bid) public {
+        applyPermit(_permit);
+        mediaContract.acceptBid(_permit.tokenId, bid);
     }
 
-    function updateMetadataURI() public {
-        // requires permit
+    function burn(Permit memory _permit) public {
+        applyPermit(_permit);
+        mediaContract.burn(_permit.tokenId);
     }
 
-    function applyPermit(Permit memory _permit) public {
+    function updateTokenURI(Permit memory _permit, string memory tokenURI) public {
+        applyPermit(_permit);
+        mediaContract.updateTokenURI(_permit.tokenId, tokenURI);
+        mediaContract.revokeApproval(_permit.tokenId);
+    }
+
+    function updateTokenMetadataURI(Permit memory _permit, string memory metadataURI) public {
+        applyPermit(_permit);
+        mediaContract.updateTokenMetadataURI(_permit.tokenId, metadataURI);
+        mediaContract.revokeApproval(_permit.tokenId);
+    }
+
+    function applyPermit(Permit memory _permit) internal {
         mediaContract.permit(
             _permit.spender,
             _permit.tokenId,
@@ -59,8 +59,4 @@ contract MediaProxy {
             _permit.s
         );
     }
-
-//    function clearApprovals(uint256 tokenId) public {
-//        mediaContract.approve();
-//    }
 }
