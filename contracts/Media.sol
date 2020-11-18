@@ -279,6 +279,13 @@ contract Media is ERC721Burnable {
         _burn(tokenId);
     }
 
+    function revokeApproval(uint256 tokenId)
+        public
+    {
+        require(msg.sender == getApproved(tokenId), "Media: caller not approved");
+        _approve(address(0), tokenId);
+    }
+
     function updateTokenURI(uint256 tokenId, string memory tokenURI)
         public
         onlyApprovedOrOwner(msg.sender, tokenId)

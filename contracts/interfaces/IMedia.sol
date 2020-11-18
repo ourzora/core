@@ -26,4 +26,5 @@ interface IMedia {
         bytes32 r,
         bytes32 s
     ) external;
+    function revokeApproval(uint256 tokenId) external;
 }

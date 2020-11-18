@@ -29,7 +29,7 @@ contract MediaProxy {
         mediaContract.setAsk(_permit.tokenId, ask);
 
         // reset approvals?
-        mediaContract.clearApproval(_permit.tokenId);
+        mediaContract.revokeApproval(_permit.tokenId);
     }
 
 //    function setBid() public {
