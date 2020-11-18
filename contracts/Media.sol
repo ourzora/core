@@ -312,7 +312,7 @@ contract Media is ERC721Burnable {
             "Media: Permit expired"
         );
         require(spender != address(0), "Media: spender cannot be 0x0");
-        bytes32 domainSeparator = initDomainSeparator("Media", "1");
+        bytes32 domainSeparator = calculateDomainSeparator("Media", "1");
 
         bytes32 digest =
             keccak256(
@@ -383,9 +383,9 @@ contract Media is ERC721Burnable {
     }
 
     /**
-     * @dev Initializes EIP712 DOMAIN_SEPARATOR based on the current contract and chain ID.
+     * @dev Calculates EIP712 DOMAIN_SEPARATOR based on the current contract and chain ID.
      */
-    function initDomainSeparator(string memory name, string memory version)
+    function calculateDomainSeparator(string memory name, string memory version)
         internal
         returns (bytes32)
     {
