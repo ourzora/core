@@ -183,7 +183,7 @@ describe("MediaProxy", async () => {
       );
     })
 
-    it("should allow different wallet to set the ask on the Media Contract for the owner wallet", async () => {
+    it("should accept valid permit, set ask on behalf of owner, then reset approvals", async () => {
       const media = await mediaAs(creatorWallet);
       const sig = await signPermit(creatorWallet, proxyAddress, mediaAddress, 0, 1);
 
@@ -205,7 +205,7 @@ describe("MediaProxy", async () => {
       const proxy = await proxyAs(otherWallet);
       await expect(proxy.setAsk(proxyPermit, ask)).fulfilled;
 
-      await expect(media.getApproved(0)).eventually.eq(proxyAddress);
+      await expect(media.getApproved(0)).eventually.eq(ethers.constants.AddressZero);
       const market = await marketAs(otherWallet);
 
       const curAsk = await market.currentAskForToken(0);
@@ -214,7 +214,7 @@ describe("MediaProxy", async () => {
       expect(toNumWei(curAsk.sellOnFee.value)).eq(toNumWei(ask.sellOnFee.value));
     });
 
-    it("should revert if the wrong spender address is specified", async () => {
+    it("should revert if the wrong spender address is specified in the permit", async () => {
       const sig = await signPermit(creatorWallet, proxyAddress, mediaAddress, 0, 1);
 
       const proxyPermit = {
@@ -238,6 +238,34 @@ describe("MediaProxy", async () => {
       );
     });
 
+    it("should revert if the wrong spender address is specified in both permit and signature", async () => {
+      const sig = await signPermit(creatorWallet, creatorWallet.address, mediaAddress, 0, 1);
+
+      const proxyPermit = {
+        spender: creatorWallet.address,
+        tokenId: 0,
+        deadline: sig.deadline,
+        v: sig.v,
+        r: sig.r,
+        s: sig.s
+      }
+
+      const ask = {
+        amount: 100,
+        currency: currencyAddress,
+        sellOnFee: Decimal.new(10),
+      }
+
+      const proxy = await proxyAs(otherWallet);
+      await expect(proxy.setAsk(proxyPermit, ask)).rejectedWith(
+        "Media: Only approved or owner"
+      );
+
+      const media = await mediaAs(creatorWallet);
+      const approved = await media.getApproved(0)
+      await expect(approved).eq(ethers.constants.AddressZero);
+    });
+
     it("should revert if a non existent tokenId is specified", async () => {
       const sig = await signPermit(creatorWallet, proxyAddress, mediaAddress, 1, 1);
 
@@ -247,7 +275,7 @@ describe("MediaProxy", async () => {
         deadline: sig.deadline,
         v: sig.v,
         r: sig.r,
-        s: sig.s
+        s: sig.s,
       }
 
       const ask = {
@@ -264,6 +292,7 @@ describe("MediaProxy", async () => {
 
     it("should revert if a tokenId that is not owned by creatorWallet is specified", async () => {
       const media = await mediaAs(otherWallet);
+
       await mintMedia(
         media,
         otherWallet.address,
