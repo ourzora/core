@@ -24,4 +24,15 @@ interface IMedia {
     function removeBid(uint256 tokenId) external;
 
     function acceptBid(uint256 tokenId, address bidder) external;
+
+    function permit(
+        address spender,
+        uint256 tokenId,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
+
+    function revokeApproval(uint256 tokenId) external;
 }
