@@ -153,12 +153,10 @@ contract Market {
         pure
         returns (bool)
     {
-        uint256 hundredPercent = uint256(100).mul(Decimal.BASE);
-        uint256 creatorShare = bidShares.creator.value;
-        uint256 ownerShare = bidShares.owner.value;
-        uint256 prevOwnerShare = bidShares.prevOwner.value;
-        uint256 shareSum = creatorShare.add(ownerShare).add(prevOwnerShare);
-        return shareSum == hundredPercent;
+        return
+            bidShares.creator.value.add(bidShares.owner.value).add(
+                bidShares.prevOwner.value
+            ) == uint256(100).mul(Decimal.BASE);
     }
 
     function _splitShare(Decimal.D256 memory sharePercentage, Bid memory bid)
