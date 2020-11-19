@@ -7,12 +7,14 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import {Counters} from "@openzeppelin/contracts/utils/Counters.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {Decimal} from "./Decimal.sol";
 import {Media} from "./Media.sol";
 
 contract Market {
     using Counters for Counters.Counter;
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
 
     /* *******
      * STRUCTS
@@ -308,10 +310,7 @@ contract Market {
         }
 
         IERC20 token = IERC20(bid.currency);
-        require(
-            token.transferFrom(bid.bidder, address(this), bid.amount),
-            "Market: transfer failed"
-        );
+        token.safeTransferFrom(bid.bidder, address(this), bid.amount);
         _tokenBidders[tokenId][bid.bidder] = bid;
         emit BidCreated(tokenId, bid);
 
@@ -344,10 +343,7 @@ contract Market {
 
         emit BidRemoved(tokenId, bid);
         delete _tokenBidders[tokenId][bidder];
-        require(
-            token.transfer(bidder, bidAmount),
-            "Market: token transfer failed"
-        );
+        token.safeTransfer(bidder, bidAmount);
     }
 
     /**
@@ -385,26 +381,17 @@ contract Market {
 
         IERC20 token = IERC20(bid.currency);
 
-        require(
-            token.transfer(
-                IERC721(tokenContract).ownerOf(tokenId),
-                _splitShare(bidShares.owner, bid)
-            ),
-            "Market: token transfer to owner failed"
+        token.safeTransfer(
+            IERC721(tokenContract).ownerOf(tokenId),
+            _splitShare(bidShares.owner, bid)
         );
-        require(
-            token.transfer(
-                Media(tokenContract).tokenCreators(tokenId),
-                _splitShare(bidShares.creator, bid)
-            ),
-            "Market: token transfer to creator failed"
+        token.safeTransfer(
+            Media(tokenContract).tokenCreators(tokenId),
+            _splitShare(bidShares.creator, bid)
         );
-        require(
-            token.transfer(
-                Media(tokenContract).previousTokenOwners(tokenId),
-                _splitShare(bidShares.prevOwner, bid)
-            ),
-            "Market: token transfer to prevOwner failed"
+        token.safeTransfer(
+            Media(tokenContract).previousTokenOwners(tokenId),
+            _splitShare(bidShares.prevOwner, bid)
         );
 
         Media(tokenContract).auctionTransfer(tokenId, bidder);
