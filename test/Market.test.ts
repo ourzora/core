@@ -349,6 +349,17 @@ describe('Market', () => {
       );
     });
 
+    it('should revert if the bidder bids 0 tokens', async () => {
+      const auction = await auctionAs(mockTokenWallet);
+      await addBidShares(auction, defaultTokenId, defaultBidShares);
+      await mintCurrency(currency, defaultBid.bidder, defaultBid.amount);
+      await approveCurrency(currency, auction.address, bidderWallet);
+
+      await expect(
+        setBid(auction, { ...defaultBid, amount: 0 }, defaultTokenId)
+      ).rejectedWith('Market: cannot bid amount of 0');
+    });
+
     it('should accept a valid bid', async () => {
       const auction = await auctionAs(mockTokenWallet);
       await addBidShares(auction, defaultTokenId, defaultBidShares);

@@ -298,9 +298,11 @@ contract Market {
             "Market: Sell on fee invalid for share splitting"
         );
         require(bid.bidder != address(0), "Market: Bidder cannot be 0 address");
+        require(bid.amount != 0, "Market: cannot bid amount of 0");
 
         Bid storage existingBid = _tokenBidders[tokenId][bid.bidder];
 
+        // If there is an existing bid, refund it before continuing
         if (existingBid.amount > 0) {
             removeBid(tokenId, bid.bidder);
         }
