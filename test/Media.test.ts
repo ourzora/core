@@ -767,9 +767,7 @@ describe('Media', () => {
     it('should revert when the caller is not the owner or a creator', async () => {
       const token = await tokenAs(otherWallet);
 
-      await expect(token.burn(0)).rejectedWith(
-        'Media: Only approved or owner'
-      );
+      await expect(token.burn(0)).rejectedWith('Media: Only approved or owner');
     });
 
     it('should revert if the token id does not exist', async () => {
@@ -895,7 +893,7 @@ describe('Media', () => {
       expect(tokenURI).eq('blah blah');
     });
 
-    it('should set the tokenURI to the URI passed if the msg.sender is approved', async() => {
+    it('should set the tokenURI to the URI passed if the msg.sender is approved', async () => {
       const token = await tokenAs(ownerWallet);
       await token.approve(otherWallet.address, 0);
 
@@ -904,7 +902,7 @@ describe('Media', () => {
 
       const tokenURI = await token.tokenURI(0);
       expect(tokenURI).eq('blah blah');
-    })
+    });
   });
 
   describe('#updateMetadataURI', async () => {
@@ -971,7 +969,7 @@ describe('Media', () => {
       expect(tokenURI).eq('blah blah');
     });
 
-    it('should set the tokenMetadataURI to the URI passed if the msg.sender is approved', async() => {
+    it('should set the tokenMetadataURI to the URI passed if the msg.sender is approved', async () => {
       const token = await tokenAs(ownerWallet);
       await token.approve(otherWallet.address, 0);
 
@@ -980,7 +978,7 @@ describe('Media', () => {
 
       const tokenURI = await token.tokenMetadataURI(0);
       expect(tokenURI).eq('blah blah');
-    })
+    });
   });
 
   describe('#permit', () => {
@@ -1053,22 +1051,28 @@ describe('Media', () => {
       await setupAuction(currency);
     });
 
-    it("should revert if the caller is the owner", async() => {
+    it('should revert if the caller is the owner', async () => {
       const token = await tokenAs(ownerWallet);
-      await expect(token.revokeApproval(0)).rejectedWith("Media: caller not approved address");
+      await expect(token.revokeApproval(0)).rejectedWith(
+        'Media: caller not approved address'
+      );
     });
 
-    it("should revert if the caller is the creator", async() => {
+    it('should revert if the caller is the creator', async () => {
       const token = await tokenAs(creatorWallet);
-      await expect(token.revokeApproval(0)).rejectedWith("Media: caller not approved address");
+      await expect(token.revokeApproval(0)).rejectedWith(
+        'Media: caller not approved address'
+      );
     });
 
-    it("should revert if the caller is neither owner, creator, or approver", async() => {
+    it('should revert if the caller is neither owner, creator, or approver', async () => {
       const token = await tokenAs(otherWallet);
-      await expect(token.revokeApproval(0)).rejectedWith("Media: caller not approved address");
+      await expect(token.revokeApproval(0)).rejectedWith(
+        'Media: caller not approved address'
+      );
     });
 
-    it("should revoke the approval for token id if caller is approved address", async () => {
+    it('should revoke the approval for token id if caller is approved address', async () => {
       const token = await tokenAs(ownerWallet);
       await token.approve(otherWallet.address, 0);
       const otherToken = await tokenAs(otherWallet);
@@ -1076,5 +1080,5 @@ describe('Media', () => {
       const approved = await token.getApproved(0);
       expect(approved).eq(ethers.constants.AddressZero);
     });
-  })
+  });
 });

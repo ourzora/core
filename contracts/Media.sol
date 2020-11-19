@@ -246,7 +246,7 @@ contract Media is ERC721Burnable {
         public
         onlyExistingToken(tokenId)
     {
-        Market(_auctionContract).setBid(tokenId, bid);
+        Market(_auctionContract).setBid(tokenId, bid, msg.sender);
     }
 
     function removeBid(uint256 tokenId) public onlyTokenCreated(tokenId) {
@@ -276,10 +276,11 @@ contract Media is ERC721Burnable {
         _burn(tokenId);
     }
 
-    function revokeApproval(uint256 tokenId)
-        public
-    {
-        require(msg.sender == getApproved(tokenId), "Media: caller not approved address");
+    function revokeApproval(uint256 tokenId) public {
+        require(
+            msg.sender == getApproved(tokenId),
+            "Media: caller not approved address"
+        );
         _approve(address(0), tokenId);
     }
 

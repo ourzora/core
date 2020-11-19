@@ -283,13 +283,17 @@ contract Market {
 
     /**
      * @dev Sets the bid on a particular token for a bidder. The token being used to bid
-     * is transferred from the bidder to this contract to be held until removed or accepted.
+     * is transferred from the spender to this contract to be held until removed or accepted.
      * If another bid already exists for the bidder, it is refunded.
      */
-    function setBid(uint256 tokenId, Bid memory bid)
+    function setBid(
+        uint256 tokenId,
+        Bid memory bid,
+        address spender
+    )
         public
         onlyTokenCaller
-        onlyTransferAllowanceAndSolvent(bid.bidder, bid.currency, bid.amount)
+        onlyTransferAllowanceAndSolvent(spender, bid.currency, bid.amount)
     {
         BidShares memory bidShares = _bidShares[tokenId];
         require(
@@ -308,7 +312,7 @@ contract Market {
         }
 
         IERC20 token = IERC20(bid.currency);
-        token.safeTransferFrom(bid.bidder, address(this), bid.amount);
+        token.safeTransferFrom(spender, address(this), bid.amount);
         _tokenBidders[tokenId][bid.bidder] = bid;
         emit BidCreated(tokenId, bid);
 
