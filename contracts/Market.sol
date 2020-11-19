@@ -315,8 +315,11 @@ contract Market {
         _tokenBidders[tokenId][bid.bidder] = bid;
         emit BidCreated(tokenId, bid);
 
-        // If the bid is over the ask price and the currency is the same, automatically accept the bid
+        // If the bid is over the ask price and the currency is the same, automatically accept the bid.
+        // If no ask is set or the bid does not meet the requirements, ignore.
+        // Note, no bid should be 0, so checking if the ask is set should not be required.
         if (
+            _tokenAsks[tokenId].currency != address(0) &&
             bid.currency == _tokenAsks[tokenId].currency &&
             bid.amount >= _tokenAsks[tokenId].amount &&
             bid.sellOnFee.value >= _tokenAsks[tokenId].sellOnFee.value
