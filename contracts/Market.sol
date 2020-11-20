@@ -314,8 +314,20 @@ contract Market {
         }
 
         IERC20 token = IERC20(bid.currency);
+
+        // We must check the balance that was actually transferred to the market,
+        // as some tokens impose a transfer fee and would not actually transfer the
+        // full amount to the market, resulting in locked funds for refunds & bid acceptance
+        uint256 beforeBalance = IERC20(bid.currency).balanceOf(address(this));
         token.safeTransferFrom(spender, address(this), bid.amount);
-        _tokenBidders[tokenId][bid.bidder] = bid;
+        uint256 afterBalance = IERC20(bid.currency).balanceOf(address(this));
+        _tokenBidders[tokenId][bid.bidder] = Bid(
+            afterBalance.sub(beforeBalance),
+            bid.currency,
+            bid.bidder,
+            bid.recipient,
+            bid.sellOnFee
+        );
         emit BidCreated(tokenId, bid);
 
         // If the bid is over the ask price and the currency is the same, automatically accept the bid.
