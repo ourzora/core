@@ -35,6 +35,7 @@ type Bid = {
   currency: string;
   amount: BigNumberish;
   bidder: string;
+  recipient: string;
   sellOnFee: { value: BigNumberish };
 };
 
@@ -129,8 +130,13 @@ describe('Market', () => {
   async function getBalance(currency: string, owner: string) {
     return BaseErc20Factory.connect(currency, deployerWallet).balanceOf(owner);
   }
-  async function setBid(auction: Market, bid: Bid, tokenId: number) {
-    await auction.setBid(tokenId, bid);
+  async function setBid(
+    auction: Market,
+    bid: Bid,
+    tokenId: number,
+    spender?: string
+  ) {
+    await auction.setBid(tokenId, bid, spender || bid.bidder);
   }
 
   beforeEach(async () => {
@@ -315,6 +321,8 @@ describe('Market', () => {
       amount: 100,
       currency: currency,
       bidder: bidderWallet.address,
+      recipient: otherWallet.address,
+      spender: bidderWallet.address,
       sellOnFee: Decimal.new(10),
     };
 
@@ -390,6 +398,8 @@ describe('Market', () => {
         amount: 130000000,
         currency: currency,
         bidder: bidderWallet.address,
+        recipient: otherWallet.address,
+        spender: bidderWallet.address,
         sellOnFee: Decimal.new(10),
       };
 

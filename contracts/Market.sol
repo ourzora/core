@@ -27,6 +27,8 @@ contract Market {
         address currency;
         // Address of the bidder
         address bidder;
+        // Address of the recipient
+        address recipient;
         // % of the next sale to award the previous owner
         Decimal.D256 sellOnFee;
     }
@@ -283,13 +285,17 @@ contract Market {
 
     /**
      * @dev Sets the bid on a particular token for a bidder. The token being used to bid
-     * is transferred from the bidder to this contract to be held until removed or accepted.
+     * is transferred from the spender to this contract to be held until removed or accepted.
      * If another bid already exists for the bidder, it is refunded.
      */
-    function setBid(uint256 tokenId, Bid memory bid)
+    function setBid(
+        uint256 tokenId,
+        Bid memory bid,
+        address spender
+    )
         public
         onlyTokenCaller
-        onlyTransferAllowanceAndSolvent(bid.bidder, bid.currency, bid.amount)
+        onlyTransferAllowanceAndSolvent(spender, bid.currency, bid.amount)
     {
         BidShares memory bidShares = _bidShares[tokenId];
         require(
@@ -308,7 +314,7 @@ contract Market {
         }
 
         IERC20 token = IERC20(bid.currency);
-        token.safeTransferFrom(bid.bidder, address(this), bid.amount);
+        token.safeTransferFrom(spender, address(this), bid.amount);
         _tokenBidders[tokenId][bid.bidder] = bid;
         emit BidCreated(tokenId, bid);
 
@@ -371,7 +377,7 @@ contract Market {
     /**
      * @dev Given a token ID and a bidder, this method transfers the value of
      * the bid to the shareholders. It also transfers the ownership of the media
-     * to the bidder. Finally, it removes the accepted bid and the current ask.
+     * to the bid recipient. Finally, it removes the accepted bid and the current ask.
      */
     function _finalizeNFTTransfer(uint256 tokenId, address bidder) private {
         Bid memory bid = _tokenBidders[tokenId][bidder];
@@ -392,7 +398,7 @@ contract Market {
             _splitShare(bidShares.prevOwner, bid.amount)
         );
 
-        Media(tokenContract).auctionTransfer(tokenId, bidder);
+        Media(tokenContract).auctionTransfer(tokenId, bid.recipient);
 
         bidShares.owner = Decimal.D256(
             uint256(100)
