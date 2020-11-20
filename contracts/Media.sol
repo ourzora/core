@@ -27,6 +27,23 @@ contract Media is ERC721Burnable {
     );
 
     /* *******
+     * Events
+     * *******
+     */
+    event Mint(
+        address indexed creator,
+        uint256 indexed tokenId,
+        bytes32 contentHash,
+        bytes32 metadataHash
+    );
+
+    event Burn(
+        address indexed owner,
+        address indexed creator,
+        uint256 indexed tokenId
+    );
+
+    /* *******
      * Globals
      * *******
      */
@@ -221,6 +238,8 @@ contract Media is ERC721Burnable {
         tokenCreators[tokenId] = creator;
         previousTokenOwners[tokenId] = creator;
         Market(_auctionContract).addBidShares(tokenId, bidShares);
+
+        emit Mint(creator, tokenId, contentHash, metadataHash);
     }
 
     /**
@@ -274,12 +293,15 @@ contract Media is ERC721Burnable {
         );
 
         _burn(tokenId);
+
+        emit Burn(owner, owner, tokenId);
     }
 
-    function revokeApproval(uint256 tokenId)
-        public
-    {
-        require(msg.sender == getApproved(tokenId), "Media: caller not approved address");
+    function revokeApproval(uint256 tokenId) public {
+        require(
+            msg.sender == getApproved(tokenId),
+            "Media: caller not approved address"
+        );
         _approve(address(0), tokenId);
     }
 

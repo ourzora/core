@@ -206,7 +206,7 @@ describe('Media', () => {
   beforeEach(async () => {
     await blockchain.resetAsync();
 
-    metadataHex = ethers.utils.formatBytes32String('{}');
+    metadataHex = ethers.utils.formatBytes32String('random');
     metadataHash = await sha256(metadataHex);
     metadataHashBytes = ethers.utils.arrayify(metadataHash);
 
@@ -269,6 +269,39 @@ describe('Media', () => {
       expect(metadataContentHash).eq(metadataHash);
       expect(savedTokenURI).eq(tokenURI);
       expect(savedMetadataURI).eq(metadataURI);
+    });
+
+    it("should emit a mint event", async() => {
+      const token = await tokenAs(creatorWallet);
+      const block = await provider.getBlockNumber();
+
+      await expect(
+        mint(
+          token,
+          creatorWallet.address,
+          metadataURI,
+          tokenURI,
+          contentHashBytes,
+          metadataHashBytes,
+          {
+            prevOwner: Decimal.new(10),
+            creator: Decimal.new(90),
+            owner: Decimal.new(0),
+          }
+        )
+      ).fulfilled;
+
+      const events = await token.queryFilter(
+        token.filters.Mint(null, null, null, null),
+        block
+      );
+      expect(events.length).eq(1);
+      const logDescription = token.interface.parseLog(events[0]);
+      expect(toNumWei(logDescription.args.tokenId)).to.eq(0);
+      expect(logDescription.args.creator).to.eq(creatorWallet.address);
+      expect(logDescription.args.contentHash).to.eq(contentHash);
+      expect(logDescription.args.metadataHash).to.eq(metadataHash);
+
     });
 
     it('should revert if an empty content hash is specified', async () => {
@@ -802,6 +835,24 @@ describe('Media', () => {
 
       const contentHash = await token.tokenContentHashes(0);
       expect(contentHash).eq(contentHash);
+    });
+
+    it("should emit a burn event", async() => {
+      const token = await tokenAs(creatorWallet);
+      await expect(token.approve(otherWallet.address, 0)).fulfilled;
+
+      const block = await provider.getBlockNumber();
+      await expect(token.burn(0)).fulfilled;
+
+      const events = await token.queryFilter(
+        token.filters.Burn(null, null, null),
+        block
+      );
+      expect(events.length).eq(1);
+      const logDescription = token.interface.parseLog(events[0]);
+      expect(toNumWei(logDescription.args.tokenId)).to.eq(0);
+      expect(logDescription.args.owner).to.eq(creatorWallet.address);
+      expect(logDescription.args.creator).to.eq(creatorWallet.address);
     });
 
     it('should clear approvals, set remove owner, but maintain tokenURI and contentHash when the owner is creator and caller is approved', async () => {
