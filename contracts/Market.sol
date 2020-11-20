@@ -159,12 +159,12 @@ contract Market {
             ) == uint256(100).mul(Decimal.BASE);
     }
 
-    function _splitShare(Decimal.D256 memory sharePercentage, Bid memory bid)
+    function _splitShare(Decimal.D256 memory sharePercentage, uint256 amount)
         public
         pure
         returns (uint256)
     {
-        return Decimal.mul(bid.amount, sharePercentage).div(100);
+        return Decimal.mul(amount, sharePercentage).div(100);
     }
 
     /**
@@ -381,15 +381,15 @@ contract Market {
 
         token.safeTransfer(
             IERC721(tokenContract).ownerOf(tokenId),
-            _splitShare(bidShares.owner, bid)
+            _splitShare(bidShares.owner, bid.amount)
         );
         token.safeTransfer(
             Media(tokenContract).tokenCreators(tokenId),
-            _splitShare(bidShares.creator, bid)
+            _splitShare(bidShares.creator, bid.amount)
         );
         token.safeTransfer(
             Media(tokenContract).previousTokenOwners(tokenId),
-            _splitShare(bidShares.prevOwner, bid)
+            _splitShare(bidShares.prevOwner, bid.amount)
         );
 
         Media(tokenContract).auctionTransfer(tokenId, bidder);
