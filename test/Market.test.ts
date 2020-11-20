@@ -35,6 +35,7 @@ type Bid = {
   currency: string;
   amount: BigNumberish;
   bidder: string;
+  recipient: string;
   sellOnFee: { value: BigNumberish };
 };
 
@@ -320,6 +321,7 @@ describe('Market', () => {
       amount: 100,
       currency: currency,
       bidder: bidderWallet.address,
+      recipient: otherWallet.address,
       spender: bidderWallet.address,
       sellOnFee: Decimal.new(10),
     };
@@ -396,6 +398,7 @@ describe('Market', () => {
         amount: 130000000,
         currency: currency,
         bidder: bidderWallet.address,
+        recipient: otherWallet.address,
         spender: bidderWallet.address,
         sellOnFee: Decimal.new(10),
       };

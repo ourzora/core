@@ -227,12 +227,12 @@ contract Media is ERC721Burnable {
      * @dev Transfer the token with the given ID to a given address.
      * note: This can only be called by the auction contract specified at deployment
      */
-    function auctionTransfer(uint256 tokenId, address bidder)
+    function auctionTransfer(uint256 tokenId, address recipient)
         public
         onlyAuction
     {
         previousTokenOwners[tokenId] = ownerOf(tokenId);
-        _safeTransfer(ownerOf(tokenId), bidder, tokenId, "");
+        _safeTransfer(ownerOf(tokenId), recipient, tokenId, "");
     }
 
     function setAsk(uint256 tokenId, Market.Ask memory ask)
@@ -246,6 +246,7 @@ contract Media is ERC721Burnable {
         public
         onlyExistingToken(tokenId)
     {
+        require(msg.sender == bid.bidder, "Market: Bidder must be msg sender");
         Market(_auctionContract).setBid(tokenId, bid, msg.sender);
     }
 

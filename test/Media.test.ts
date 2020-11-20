@@ -57,6 +57,7 @@ type Bid = {
   currency: string;
   amount: BigNumberish;
   bidder: string;
+  recipient: string;
   sellOnFee: { value: BigNumberish };
 };
 
@@ -83,10 +84,15 @@ describe('Media', () => {
     currency: '0x41A322b28D0fF354040e2CbC676F0320d8c8850d',
     sellOnFee: Decimal.new(0),
   };
-  const defaultBid = (currency: string, bidder: string) => ({
+  const defaultBid = (
+    currency: string,
+    bidder: string,
+    recipient?: string
+  ) => ({
     amount: 100,
     currency,
     bidder,
+    recipient: recipient || bidder,
     sellOnFee: Decimal.new(10),
   });
 
@@ -550,6 +556,7 @@ describe('Media', () => {
           currency: currencyAddr,
           amount: 200,
           bidder: bidderWallet.address,
+          recipient: otherWallet.address,
           sellOnFee: Decimal.new(10),
         },
         1
@@ -639,7 +646,7 @@ describe('Media', () => {
       const auction = await MarketFactory.connect(auctionAddress, bidderWallet);
       const asBidder = await tokenAs(bidderWallet);
       const bid = {
-        ...defaultBid(currencyAddr, bidderWallet.address),
+        ...defaultBid(currencyAddr, bidderWallet.address, otherWallet.address),
         sellOnFee: Decimal.new(15),
       };
       await setBid(asBidder, bid, 0);
@@ -669,7 +676,7 @@ describe('Media', () => {
       expect(afterOwnerBalance).eq(beforeOwnerBalance + 80);
       expect(afterPrevOwnerBalance).eq(beforePrevOwnerBalance + 10);
       expect(afterCreatorBalance).eq(beforeCreatorBalance + 10);
-      expect(newOwner).eq(bidderWallet.address);
+      expect(newOwner).eq(otherWallet.address);
       expect(toNumWei(bidShares.owner.value)).eq(75 * 10 ** 18);
       expect(toNumWei(bidShares.prevOwner.value)).eq(15 * 10 ** 18);
       expect(toNumWei(bidShares.creator.value)).eq(10 * 10 ** 18);

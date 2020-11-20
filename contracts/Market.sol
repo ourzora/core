@@ -27,6 +27,8 @@ contract Market {
         address currency;
         // Address of the bidder
         address bidder;
+        // Address of the recipient
+        address recipient;
         // % of the next sale to award the previous owner
         Decimal.D256 sellOnFee;
     }
@@ -375,7 +377,7 @@ contract Market {
     /**
      * @dev Given a token ID and a bidder, this method transfers the value of
      * the bid to the shareholders. It also transfers the ownership of the media
-     * to the bidder. Finally, it removes the accepted bid and the current ask.
+     * to the bid recipient. Finally, it removes the accepted bid and the current ask.
      */
     function _finalizeNFTTransfer(uint256 tokenId, address bidder) private {
         Bid memory bid = _tokenBidders[tokenId][bidder];
@@ -396,7 +398,7 @@ contract Market {
             _splitShare(bidShares.prevOwner, bid.amount)
         );
 
-        Media(tokenContract).auctionTransfer(tokenId, bidder);
+        Media(tokenContract).auctionTransfer(tokenId, bid.recipient);
 
         bidShares.owner = Decimal.D256(
             uint256(100)
