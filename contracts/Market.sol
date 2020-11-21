@@ -139,12 +139,28 @@ contract Market {
         return _bidShares[tokenId];
     }
 
+    /**
+     * @dev Validates that the bid is valid by ensuring that the bid amount can be split perfectly into all the bid shares.
+     *  We do this by comparing the sum of the individual share values with the amount and ensuring they are equal. Because
+     *  the _splitShare function uses integer division, any inconsistencies with the original and split sums would be due to
+     *  a bid splitting that does not perfectly divide the bid amount.
+     */
     function isValidBid(uint256 tokenId, uint256 bidAmount)
         public
         view
         returns (bool)
     {
-        return bidAmount != 0 && ((bidAmount % minBidForToken(tokenId)) == 0);
+        BidShares memory bidShares = bidSharesForToken(tokenId);
+        require(
+            isValidBidShares(bidShares),
+            "Market: Invalid bid shares for token"
+        );
+        return
+            bidAmount != 0 &&
+            (bidAmount ==
+                _splitShare(bidShares.creator, bidAmount)
+                    .add(_splitShare(bidShares.prevOwner, bidAmount))
+                    .add(_splitShare(bidShares.owner, bidAmount)));
     }
 
     /**
@@ -167,60 +183,6 @@ contract Market {
         returns (uint256)
     {
         return Decimal.mul(amount, sharePercentage).div(100);
-    }
-
-    /**
-     * @dev Given a token id, calculate the minimum bid amount required such that the bid shares can be split exactly.
-     * For example, if the bid fee % is all whole units, the minimum amount would be 100
-     * if the bid fee % has one decimal place , the minimum amount would be 1000
-     */
-    function minBidForToken(uint256 tokenId) public view returns (uint256) {
-        BidShares memory bidShares = _bidShares[tokenId];
-
-        require(
-            isValidBidShares(bidShares),
-            "Market: Invalid bid shares for token"
-        );
-
-        uint256 creatorMinCommonDenominator = 0;
-        uint256 ownerMinCommonDenominator = 0;
-        uint256 prevOwnerMinCommonDenominator = 0;
-
-        for (uint256 i = Decimal.BASE_POW; i >= 0; i--) {
-            if (bidShares.creator.value % uint256(10**i) == 0) {
-                creatorMinCommonDenominator = uint256(ONE_HUNDRED).mul(
-                    10**(Decimal.BASE_POW - i)
-                );
-                break;
-            }
-        }
-        for (uint256 i = Decimal.BASE_POW; i >= 0; i--) {
-            if (bidShares.owner.value % uint256(10**i) == 0) {
-                ownerMinCommonDenominator = uint256(ONE_HUNDRED).mul(
-                    10**(Decimal.BASE_POW - i)
-                );
-                break;
-            }
-        }
-        for (uint256 i = Decimal.BASE_POW; i >= 0; i--) {
-            if (bidShares.prevOwner.value % uint256(10**i) == 0) {
-                prevOwnerMinCommonDenominator = uint256(ONE_HUNDRED).mul(
-                    10**(Decimal.BASE_POW - i)
-                );
-                break;
-            }
-        }
-
-        uint256 minBid =
-            Math.max(
-                Math.max(
-                    creatorMinCommonDenominator,
-                    ownerMinCommonDenominator
-                ),
-                prevOwnerMinCommonDenominator
-            );
-
-        return Math.min((ONE_HUNDRED * 10**Decimal.BASE_POW), minBid);
     }
 
     /* ****************

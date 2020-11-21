@@ -720,6 +720,20 @@ describe('Media', () => {
       ).rejectedWith('Market: cannot accept bid of 0');
     });
 
+    it('should revert if an invalid bid is accepted', async () => {
+      const token = await tokenAs(ownerWallet);
+      const asBidder = await tokenAs(bidderWallet);
+      const bid = {
+        ...defaultBid(currencyAddr, bidderWallet.address),
+        amount: 99,
+      };
+      await setBid(asBidder, bid, 0);
+
+      await expect(token.acceptBid(0, bid)).rejectedWith(
+        'Market: Bid invalid for share splitting'
+      );
+    });
+
     // TODO: test the front running logic
   });
 
