@@ -1,6 +1,6 @@
 {
   "name": "@zoralabs/media",
-  "version": "1.0.0-rc1",
+  "version": "1.0.0-rc2",
   "private": false,
   "scripts": {
     "dev": "next dev",
