@@ -894,6 +894,9 @@ describe('Media', () => {
 
       const contentHash = await token.tokenContentHashes(0);
       expect(contentHash).eq(contentHash);
+
+      const previousOwner = await token.previousTokenOwners(0);
+      expect(previousOwner).eq(AddressZero);
     });
 
     it('should clear approvals, set remove owner, but maintain tokenURI and contentHash when the owner is creator and caller is approved', async () => {
@@ -920,6 +923,9 @@ describe('Media', () => {
 
       const contentHash = await token.tokenContentHashes(0);
       expect(contentHash).eq(contentHash);
+
+      const previousOwner = await token.previousTokenOwners(0);
+      expect(previousOwner).eq(AddressZero);
     });
   });
 

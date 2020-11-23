@@ -392,6 +392,7 @@ contract Media is ERC721Burnable {
 
         _beforeTokenTransfer(owner, address(0), tokenId);
         _approve(address(0), tokenId);
+        delete previousTokenOwners[tokenId];
         _holderTokens[owner].remove(tokenId);
         _tokenOwners.remove(tokenId);
 
