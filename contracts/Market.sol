@@ -55,12 +55,12 @@ contract Market {
      * Events
      * *******
      */
-    event BidCreated(uint256 tokenId, Bid bid);
-    event BidRemoved(uint256 tokenId, Bid bid);
-    event BidFinalized(uint256 tokenId, Bid bid);
-    event AskCreated(uint256 tokenId, Ask ask);
+    event BidCreated(uint256 indexed tokenId, Bid bid);
+    event BidRemoved(uint256 indexed tokenId, Bid bid);
+    event BidFinalized(uint256 indexed tokenId, Bid bid);
+    event AskCreated(uint256 indexed tokenId, Ask ask);
     event AskRemoved(uint256 indexed tokenId);
-    event BidShareUpdated(uint256 tokenId, BidShares bidShares);
+    event BidShareUpdated(uint256 indexed tokenId, BidShares bidShares);
 
     /* *******
      * Globals
