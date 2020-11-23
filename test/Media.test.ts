@@ -138,6 +138,10 @@ describe('Media', () => {
     return token.setAsk(tokenId, ask);
   }
 
+  async function removeAsk(token: Media, tokenId: number) {
+    return token.removeAsk(tokenId);
+  }
+
   async function setBid(token: Media, bid: Bid, tokenId: number) {
     return token.setBid(tokenId, bid);
   }
@@ -471,6 +475,52 @@ describe('Media', () => {
     });
   });
 
+  describe('#removeAsk', () => {
+    it('should remove the ask', async () => {
+      const token = await tokenAs(ownerWallet);
+      const market = await MarketFactory.connect(
+        auctionAddress,
+        deployerWallet
+      );
+      await setAsk(token, 0, defaultAsk);
+
+      await expect(removeAsk(token, 0)).fulfilled;
+      const ask = await market.currentAskForToken(0);
+      expect(toNumWei(ask.amount)).eq(0);
+      expect(ask.currency).eq(AddressZero);
+      expect(toNumWei(ask.sellOnFee.value)).eq(0);
+    });
+
+    it('should emit an Ask Removed event', async () => {
+      const token = await tokenAs(ownerWallet);
+      const auction = await MarketFactory.connect(
+        auctionAddress,
+        deployerWallet
+      );
+      await setAsk(token, 0, defaultAsk);
+      const block = await provider.getBlockNumber();
+      const tx = await removeAsk(token, 0);
+
+      const events = await auction.queryFilter(
+        auction.filters.AskRemoved(0),
+        block
+      );
+      expect(events.length).eq(1);
+      const logDescription = auction.interface.parseLog(events[0]);
+      expect(toNumWei(logDescription.args.tokenId)).to.eq(0);
+    });
+
+    it('should not be callable by anyone that is not owner or approved', async () => {
+      const token = await tokenAs(ownerWallet);
+      const asOther = await tokenAs(otherWallet);
+      await setAsk(token, 0, defaultAsk);
+
+      expect(removeAsk(asOther, 0)).rejectedWith(
+        'Media: Only approved or owner'
+      );
+    });
+  });
+
   describe('#setBid', () => {
     let currencyAddr: string;
     beforeEach(async () => {
@@ -735,6 +785,29 @@ describe('Media', () => {
     });
 
     // TODO: test the front running logic
+  });
+
+  describe('#transfer', () => {
+    let currencyAddr: string;
+    beforeEach(async () => {
+      await deploy();
+      currencyAddr = await deployCurrency();
+      await setupAuction(currencyAddr);
+    });
+
+    it('should remove the ask after a transfer', async () => {
+      const token = await tokenAs(ownerWallet);
+      const auction = MarketFactory.connect(auctionAddress, deployerWallet);
+      await setAsk(token, 0, defaultAsk);
+
+      await expect(
+        token.transferFrom(ownerWallet.address, otherWallet.address, 0)
+      ).fulfilled;
+      const ask = await auction.currentAskForToken(0);
+      await expect(toNumWei(ask.amount)).eq(0);
+      await expect(ask.currency).eq(AddressZero);
+      await expect(toNumWei(ask.sellOnFee.value)).eq(0);
+    });
   });
 
   describe('#burn', () => {

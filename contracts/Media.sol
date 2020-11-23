@@ -242,6 +242,13 @@ contract Media is ERC721Burnable {
         Market(_auctionContract).setAsk(tokenId, ask);
     }
 
+    function removeAsk(uint256 tokenId)
+        public
+        onlyApprovedOrOwner(msg.sender, tokenId)
+    {
+        Market(_auctionContract).removeAsk(tokenId);
+    }
+
     function setBid(uint256 tokenId, Market.Bid memory bid)
         public
         onlyExistingToken(tokenId)
@@ -321,7 +328,7 @@ contract Media is ERC721Burnable {
             "Media: Permit expired"
         );
         require(spender != address(0), "Media: spender cannot be 0x0");
-        bytes32 domainSeparator = calculateDomainSeparator("Media", "1");
+        bytes32 domainSeparator = _calculateDomainSeparator("Media", "1");
 
         bytes32 digest =
             keccak256(
@@ -391,13 +398,23 @@ contract Media is ERC721Burnable {
         emit Transfer(owner, address(0), tokenId);
     }
 
+    function _transfer(
+        address from,
+        address to,
+        uint256 tokenId
+    ) internal override {
+        super._transfer(from, to, tokenId);
+
+        Market(_auctionContract).removeAsk(tokenId);
+    }
+
     /**
      * @dev Calculates EIP712 DOMAIN_SEPARATOR based on the current contract and chain ID.
      */
-    function calculateDomainSeparator(string memory name, string memory version)
-        internal
-        returns (bytes32)
-    {
+    function _calculateDomainSeparator(
+        string memory name,
+        string memory version
+    ) internal returns (bytes32) {
         uint256 chainID;
         /* solium-disable-next-line */
         assembly {

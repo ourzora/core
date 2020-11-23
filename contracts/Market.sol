@@ -59,6 +59,7 @@ contract Market {
     event BidRemoved(uint256 tokenId, Bid bid);
     event BidFinalized(uint256 tokenId, Bid bid);
     event AskCreated(uint256 tokenId, Ask ask);
+    event AskRemoved(uint256 indexed tokenId);
     event BidShareUpdated(uint256 tokenId, BidShares bidShares);
 
     /* *******
@@ -243,6 +244,11 @@ contract Market {
 
         _tokenAsks[tokenId] = ask;
         emit AskCreated(tokenId, ask);
+    }
+
+    function removeAsk(uint256 tokenId) public onlyTokenCaller {
+        delete _tokenAsks[tokenId];
+        emit AskRemoved(tokenId);
     }
 
     /**
