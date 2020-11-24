@@ -1,6 +1,7 @@
 {
   "name": "@zoralabs/media",
   "version": "1.0.0-rc3",
+  "type": "module",
   "private": false,
   "scripts": {
     "dev": "next dev",

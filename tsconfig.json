@@ -9,6 +9,10 @@
   },
   "include": [
     "./scripts",
-    "./test"
+    "./test",
+    "./typechain",
+    "./addresses",
+    "./scripts",
+    "./utils"
   ]
 }
