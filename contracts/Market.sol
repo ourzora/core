@@ -284,9 +284,9 @@ contract Market {
         // We must check the balance that was actually transferred to the market,
         // as some tokens impose a transfer fee and would not actually transfer the
         // full amount to the market, resulting in locked funds for refunds & bid acceptance
-        uint256 beforeBalance = IERC20(bid.currency).balanceOf(address(this));
+        uint256 beforeBalance = token.balanceOf(address(this));
         token.safeTransferFrom(spender, address(this), bid.amount);
-        uint256 afterBalance = IERC20(bid.currency).balanceOf(address(this));
+        uint256 afterBalance = token.balanceOf(address(this));
         _tokenBidders[tokenId][bid.bidder] = Bid(
             afterBalance.sub(beforeBalance),
             bid.currency,
