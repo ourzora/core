@@ -66,8 +66,6 @@ contract Market {
      * Globals
      * *******
      */
-    uint256 constant ONE_HUNDRED = 100;
-
     // Address of the media contract that can call this market
     address public tokenContract;
 
