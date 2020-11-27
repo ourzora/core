@@ -8,10 +8,13 @@ import {Counters} from "@openzeppelin/contracts/utils/Counters.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {Math} from "@openzeppelin/contracts/math/Math.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {
+    ReentrancyGuard
+} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Decimal} from "./Decimal.sol";
 import {Market} from "./Market.sol";
 
-contract Media is ERC721Burnable {
+contract Media is ERC721Burnable, ReentrancyGuard {
     using Counters for Counters.Counter;
     using SafeMath for uint256;
 
@@ -251,13 +254,18 @@ contract Media is ERC721Burnable {
 
     function setBid(uint256 tokenId, Market.Bid memory bid)
         public
+        nonReentrant
         onlyExistingToken(tokenId)
     {
         require(msg.sender == bid.bidder, "Market: Bidder must be msg sender");
         Market(_auctionContract).setBid(tokenId, bid, msg.sender);
     }
 
-    function removeBid(uint256 tokenId) public onlyTokenCreated(tokenId) {
+    function removeBid(uint256 tokenId)
+        public
+        nonReentrant
+        onlyTokenCreated(tokenId)
+    {
         Market(_auctionContract).removeBid(tokenId, msg.sender);
     }
 
