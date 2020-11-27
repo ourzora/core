@@ -92,7 +92,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
 
     modifier onlyTokenWithContentHash(uint256 tokenId) {
         require(
-            tokenContentHashes[tokenId] != "",
+            tokenContentHashes[tokenId] != 0,
             "Media: token does not have hash of created content"
         );
         _;
@@ -100,7 +100,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
 
     modifier onlyTokenWithMetadataHash(uint256 tokenId) {
         require(
-            tokenMetadataHashes[tokenId] != "",
+            tokenMetadataHashes[tokenId] != 0,
             "Media: token does not have hash of its metadata"
         );
         _;
@@ -201,12 +201,12 @@ contract Media is ERC721Burnable, ReentrancyGuard {
         bytes32 metadataHash,
         Market.BidShares memory bidShares
     ) public onlyValidURI(tokenURI) onlyValidURI(metadataURI) {
-        require(contentHash != "", "Media: content hash must be non-empty");
+        require(contentHash != 0, "Media: content hash must be non-empty");
         require(
             _contentHashes[contentHash] == false,
             "Media: a token has already been created with this content hash"
         );
-        require(metadataHash != "", "Media: metadata hash  must be non-empty");
+        require(metadataHash != 0, "Media: metadata hash  must be non-empty");
 
         // We cannot just use balanceOf to create the new tokenId because tokens
         // can be burned (destroyed), so we need a separate counter.
