@@ -72,9 +72,6 @@ contract Market {
     // Deployment Address
     address private _owner;
 
-    // True if the token contract has been set, false otherwise
-    bool private _configured;
-
     // Mapping from token to mapping from bidder to bid
     mapping(uint256 => mapping(address => Bid)) private _tokenBidders;
 
@@ -191,7 +188,6 @@ contract Market {
 
     constructor() public {
         _owner = msg.sender;
-        _configured = false;
     }
 
     /**
@@ -200,10 +196,9 @@ contract Market {
      */
     function configure(address mediaContractAddress) public {
         require(msg.sender == _owner, "Market: Only owner");
-        require(_configured == false, "Market: Already configured");
+        require(mediaContract == address(0), "Market: Already configured");
 
         mediaContract = mediaContractAddress;
-        _configured = true;
     }
 
     /**
