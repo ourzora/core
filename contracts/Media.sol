@@ -395,16 +395,22 @@ contract Media is ERC721Burnable, ReentrancyGuard {
         _tokenMetadataURIs[tokenId] = metadataURI;
     }
 
+    /**
+     * @dev Destroys `tokenId`.
+     * We modify the OZ _burn implementation to
+     * maintain metadata and to remove the
+     * previous token owner from the piece
+     */
     function _burn(uint256 tokenId) internal override {
-        address owner = ownerOf(tokenId);
+        string memory tokenURI = _tokenURIs[tokenId];
 
-        _beforeTokenTransfer(owner, address(0), tokenId);
-        _approve(address(0), tokenId);
+        super._burn(tokenId);
+
+        if (bytes(tokenURI).length != 0) {
+            _tokenURIs[tokenId] = tokenURI;
+        }
+
         delete previousTokenOwners[tokenId];
-        _holderTokens[owner].remove(tokenId);
-        _tokenOwners.remove(tokenId);
-
-        emit Transfer(owner, address(0), tokenId);
     }
 
     function _transfer(
