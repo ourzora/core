@@ -34,8 +34,8 @@ contract Media is ERC721Burnable, ReentrancyGuard {
      * *******
      */
 
-    // Address for the auction
-    address public _auctionContract;
+    // Address for the market
+    address public marketContract;
 
     // Mapping from token to previous owner of the token
     mapping(uint256 => address) public previousTokenOwners;
@@ -115,7 +115,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
     }
 
     modifier onlyAuction() {
-        require(msg.sender == _auctionContract, "Media: only market contract");
+        require(msg.sender == marketContract, "Media: only market contract");
         _;
     }
 
@@ -135,8 +135,8 @@ contract Media is ERC721Burnable, ReentrancyGuard {
         _;
     }
 
-    constructor(address auctionContract) public ERC721("Media", "MEDIA") {
-        _auctionContract = auctionContract;
+    constructor(address marketContractAddr) public ERC721("Zora", "ZORA") {
+        marketContract = marketContractAddr;
         _registerInterface(_INTERFACE_ID_ERC721_METADATA);
     }
 
@@ -223,7 +223,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
 
         tokenCreators[tokenId] = creator;
         previousTokenOwners[tokenId] = creator;
-        Market(_auctionContract).addBidShares(tokenId, bidShares);
+        Market(marketContract).addBidShares(tokenId, bidShares);
     }
 
     /**
@@ -242,14 +242,14 @@ contract Media is ERC721Burnable, ReentrancyGuard {
         public
         onlyApprovedOrOwner(msg.sender, tokenId)
     {
-        Market(_auctionContract).setAsk(tokenId, ask);
+        Market(marketContract).setAsk(tokenId, ask);
     }
 
     function removeAsk(uint256 tokenId)
         public
         onlyApprovedOrOwner(msg.sender, tokenId)
     {
-        Market(_auctionContract).removeAsk(tokenId);
+        Market(marketContract).removeAsk(tokenId);
     }
 
     function setBid(uint256 tokenId, Market.Bid memory bid)
@@ -258,7 +258,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
         onlyExistingToken(tokenId)
     {
         require(msg.sender == bid.bidder, "Market: Bidder must be msg sender");
-        Market(_auctionContract).setBid(tokenId, bid, msg.sender);
+        Market(marketContract).setBid(tokenId, bid, msg.sender);
     }
 
     function removeBid(uint256 tokenId)
@@ -266,14 +266,14 @@ contract Media is ERC721Burnable, ReentrancyGuard {
         nonReentrant
         onlyTokenCreated(tokenId)
     {
-        Market(_auctionContract).removeBid(tokenId, msg.sender);
+        Market(marketContract).removeBid(tokenId, msg.sender);
     }
 
     function acceptBid(uint256 tokenId, Market.Bid memory bid)
         public
         onlyApprovedOrOwner(msg.sender, tokenId)
     {
-        Market(_auctionContract).acceptBid(tokenId, bid);
+        Market(marketContract).acceptBid(tokenId, bid);
     }
 
     function burn(uint256 tokenId)
@@ -336,7 +336,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
             "Media: Permit expired"
         );
         require(spender != address(0), "Media: spender cannot be 0x0");
-        bytes32 domainSeparator = _calculateDomainSeparator("Media", "1");
+        bytes32 domainSeparator = _calculateDomainSeparator("Zora", "1");
 
         bytes32 digest =
             keccak256(
@@ -414,7 +414,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
     ) internal override {
         super._transfer(from, to, tokenId);
 
-        Market(_auctionContract).removeAsk(tokenId);
+        Market(marketContract).removeAsk(tokenId);
     }
 
     /**

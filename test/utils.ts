@@ -70,11 +70,11 @@ export async function signPermit(
 ) {
   return new Promise<Permit>(async (res, reject) => {
     let nonce;
-    const tokenContract = MediaFactory.connect(tokenAddress, owner);
+    const mediaContract = MediaFactory.connect(tokenAddress, owner);
 
     try {
       nonce = (
-        await tokenContract.permitNonces(owner.address, tokenId)
+        await mediaContract.permitNonces(owner.address, tokenId)
       ).toNumber();
     } catch (e) {
       console.error('NONCE', e);
@@ -83,7 +83,7 @@ export async function signPermit(
     }
 
     const deadline = Math.floor(new Date().getTime() / 1000) + 60 * 60 * 24; // 24 hours
-    const name = await tokenContract.name();
+    const name = await mediaContract.name();
 
     try {
       const sig = signTypedData(Buffer.from(owner.privateKey.slice(2), 'hex'), {
@@ -107,7 +107,7 @@ export async function signPermit(
             name,
             version: '1',
             chainId,
-            verifyingContract: tokenContract.address,
+            verifyingContract: mediaContract.address,
           },
           message: {
             spender: toAddress,

@@ -85,11 +85,11 @@ describe('Market', () => {
     );
   }
 
-  async function readTokenContract() {
+  async function readMediaContract() {
     return MarketFactory.connect(
       auctionAddress,
       deployerWallet
-    ).tokenContract();
+    ).mediaContract();
   }
 
   async function addBidShares(
@@ -164,7 +164,7 @@ describe('Market', () => {
 
     it('should be callable by the owner', async () => {
       await expect(configure()).eventually.fulfilled;
-      const tokenContractAddress = await readTokenContract();
+      const tokenContractAddress = await readMediaContract();
 
       expect(tokenContractAddress).eq(mockTokenWallet.address);
     });
@@ -184,15 +184,15 @@ describe('Market', () => {
       await configure();
     });
 
-    it('should reject if not called by the token address', async () => {
+    it('should reject if not called by the media address', async () => {
       const auction = await auctionAs(otherWallet);
 
       await expect(
         addBidShares(auction, defaultTokenId, defaultBidShares)
-      ).rejectedWith('Market: Only token contract');
+      ).rejectedWith('Market: Only media contract');
     });
 
-    it('should set the bid shares if called by the token address', async () => {
+    it('should set the bid shares if called by the media address', async () => {
       const auction = await auctionAs(mockTokenWallet);
 
       await expect(addBidShares(auction, defaultTokenId, defaultBidShares))
@@ -252,15 +252,15 @@ describe('Market', () => {
       await configure();
     });
 
-    it('should reject if not called by the token address', async () => {
+    it('should reject if not called by the media address', async () => {
       const auction = await auctionAs(otherWallet);
 
       await expect(setAsk(auction, defaultTokenId, defaultAsk)).rejectedWith(
-        'Market: Only token contract'
+        'Market: Only media contract'
       );
     });
 
-    it('should set the ask if called by the token address', async () => {
+    it('should set the ask if called by the media address', async () => {
       const auction = await auctionAs(mockTokenWallet);
       await addBidShares(auction, defaultTokenId, defaultBidShares);
 
@@ -333,10 +333,10 @@ describe('Market', () => {
       defaultBid.currency = currency;
     });
 
-    it('should revert if not called by the token contract', async () => {
+    it('should revert if not called by the media contract', async () => {
       const auction = await auctionAs(otherWallet);
       await expect(setBid(auction, defaultBid, defaultTokenId)).rejectedWith(
-        'Market: Only token contract'
+        'Market: Only media contract'
       );
     });
 

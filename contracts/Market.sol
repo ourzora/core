@@ -67,7 +67,7 @@ contract Market {
      * *******
      */
     // Address of the media contract that can call this market
-    address public tokenContract;
+    address public mediaContract;
 
     // Deployment Address
     address private _owner;
@@ -105,8 +105,8 @@ contract Market {
         _;
     }
 
-    modifier onlyTokenCaller() {
-        require(tokenContract == msg.sender, "Market: Only token contract");
+    modifier onlyMediaCaller() {
+        require(mediaContract == msg.sender, "Market: Only media contract");
         _;
     }
 
@@ -198,11 +198,11 @@ contract Market {
      * @dev Sets the token contract address. This address is the only permitted address that
      * can call the mutable functions. This method can only be called once.
      */
-    function configure(address tokenContractAddress) public {
+    function configure(address mediaContractAddress) public {
         require(msg.sender == _owner, "Market: Only owner");
         require(_configured == false, "Market: Already configured");
 
-        tokenContract = tokenContractAddress;
+        mediaContract = mediaContractAddress;
         _configured = true;
     }
 
@@ -212,7 +212,7 @@ contract Market {
      */
     function addBidShares(uint256 tokenId, BidShares memory bidShares)
         public
-        onlyTokenCaller
+        onlyMediaCaller
     {
         require(
             isValidBidShares(bidShares),
@@ -226,7 +226,7 @@ contract Market {
      * @dev Sets the ask on a particular token. If the ask cannot be evenly split into the token's
      * bid shares, this reverts.
      */
-    function setAsk(uint256 tokenId, Ask memory ask) public onlyTokenCaller {
+    function setAsk(uint256 tokenId, Ask memory ask) public onlyMediaCaller {
         require(
             isValidBid(tokenId, ask.amount),
             "Market: Ask invalid for share splitting"
@@ -244,7 +244,7 @@ contract Market {
         emit AskCreated(tokenId, ask);
     }
 
-    function removeAsk(uint256 tokenId) public onlyTokenCaller {
+    function removeAsk(uint256 tokenId) public onlyMediaCaller {
         delete _tokenAsks[tokenId];
         emit AskRemoved(tokenId);
     }
@@ -260,7 +260,7 @@ contract Market {
         address spender
     )
         public
-        onlyTokenCaller
+        onlyMediaCaller
         onlyTransferAllowanceAndSolvent(spender, bid.currency, bid.amount)
     {
         BidShares memory bidShares = _bidShares[tokenId];
@@ -314,7 +314,7 @@ contract Market {
      * @dev Removes the bid on a particular token for a bidder. The bid amount
      * is transferred from this contract to the bidder, if they have a bid placed.
      */
-    function removeBid(uint256 tokenId, address bidder) public onlyTokenCaller {
+    function removeBid(uint256 tokenId, address bidder) public onlyMediaCaller {
         Bid storage bid = _tokenBidders[tokenId][bidder];
         uint256 bidAmount = bid.amount;
         address bidCurrency = bid.currency;
@@ -334,7 +334,7 @@ contract Market {
      */
     function acceptBid(uint256 tokenId, Bid calldata expectedBid)
         external
-        onlyTokenCaller
+        onlyMediaCaller
     {
         Bid memory bid = _tokenBidders[tokenId][expectedBid.bidder];
         require(bid.amount > 0, "Market: cannot accept bid of 0");
@@ -364,19 +364,19 @@ contract Market {
         IERC20 token = IERC20(bid.currency);
 
         token.safeTransfer(
-            IERC721(tokenContract).ownerOf(tokenId),
+            IERC721(mediaContract).ownerOf(tokenId),
             _splitShare(bidShares.owner, bid.amount)
         );
         token.safeTransfer(
-            Media(tokenContract).tokenCreators(tokenId),
+            Media(mediaContract).tokenCreators(tokenId),
             _splitShare(bidShares.creator, bid.amount)
         );
         token.safeTransfer(
-            Media(tokenContract).previousTokenOwners(tokenId),
+            Media(mediaContract).previousTokenOwners(tokenId),
             _splitShare(bidShares.prevOwner, bid.amount)
         );
 
-        Media(tokenContract).auctionTransfer(tokenId, bid.recipient);
+        Media(mediaContract).auctionTransfer(tokenId, bid.recipient);
 
         bidShares.owner = Decimal.D256(
             uint256(100)
