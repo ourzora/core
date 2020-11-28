@@ -838,7 +838,7 @@ describe('Media', () => {
       );
       const token = await tokenAs(ownerWallet);
       await expect(token.burn(0)).rejectedWith(
-        'Media: owner is not creator of token'
+        'Media: owner is not creator of media'
       );
     });
 
@@ -854,7 +854,7 @@ describe('Media', () => {
 
       const otherToken = await tokenAs(otherWallet);
       await expect(otherToken.burn(0)).rejectedWith(
-        'Media: owner is not creator of token'
+        'Media: owner is not creator of media'
       );
     });
 

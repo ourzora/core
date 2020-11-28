@@ -85,6 +85,12 @@ contract Market {
      * Modifiers
      * *********
      */
+
+    /**
+     * @dev given an address for an ERC-20 contract, revert if the spender does not have
+     * a large enough balance for the amount or has not given approval for this contract to
+     * transfer funds
+     */
     modifier onlyTransferAllowanceAndSolvent(
         address spender,
         address currencyAddress,
@@ -102,6 +108,9 @@ contract Market {
         _;
     }
 
+    /**
+     * @dev require that the msg.sender is the configured media contract
+     */
     modifier onlyMediaCaller() {
         require(mediaContract == msg.sender, "Market: Only media contract");
         _;
@@ -160,7 +169,7 @@ contract Market {
     }
 
     /**
-     * @dev Validates that the bid shares provided sum to 100
+     * @dev Validates that the provided bid shares sum to 100
      */
     function isValidBidShares(BidShares memory bidShares)
         public
@@ -173,6 +182,10 @@ contract Market {
             ) == uint256(100).mul(Decimal.BASE);
     }
 
+    /**
+     * @dev return a % of the specified amount. This function is used to split a bid into equal shares
+     * for a media's shareholders.
+     */
     function _splitShare(Decimal.D256 memory sharePercentage, uint256 amount)
         public
         pure
@@ -191,7 +204,7 @@ contract Market {
     }
 
     /**
-     * @dev Sets the token contract address. This address is the only permitted address that
+     * @dev Sets the media contract address. This address is the only permitted address that
      * can call the mutable functions. This method can only be called once.
      */
     function configure(address mediaContractAddress) public {
@@ -218,7 +231,7 @@ contract Market {
     }
 
     /**
-     * @dev Sets the ask on a particular token. If the ask cannot be evenly split into the token's
+     * @dev Sets the ask on a particular media. If the ask cannot be evenly split into the media's
      * bid shares, this reverts.
      */
     function setAsk(uint256 tokenId, Ask memory ask) public onlyMediaCaller {
@@ -245,7 +258,7 @@ contract Market {
     }
 
     /**
-     * @dev Sets the bid on a particular token for a bidder. The token being used to bid
+     * @dev Sets the bid on a particular media for a bidder. The token being used to bid
      * is transferred from the spender to this contract to be held until removed or accepted.
      * If another bid already exists for the bidder, it is refunded.
      */
@@ -291,9 +304,8 @@ contract Market {
         );
         emit BidCreated(tokenId, bid);
 
-        // If the bid is over the ask price and the currency is the same, automatically accept the bid.
+        // If a bid meets the criteria for an ask, automatically accept the bid.
         // If no ask is set or the bid does not meet the requirements, ignore.
-        // Note, no bid should be 0, so checking if the ask is set should not be required.
         if (
             _tokenAsks[tokenId].currency != address(0) &&
             bid.currency == _tokenAsks[tokenId].currency &&
@@ -306,7 +318,7 @@ contract Market {
     }
 
     /**
-     * @dev Removes the bid on a particular token for a bidder. The bid amount
+     * @dev Removes the bid on a particular media for a bidder. The bid amount
      * is transferred from this contract to the bidder, if they have a bid placed.
      */
     function removeBid(uint256 tokenId, address bidder) public onlyMediaCaller {
@@ -326,6 +338,11 @@ contract Market {
     /**
      * @dev Accepts a bid from a particular bidder. Can only be called by the token
      * owner or an approved address. See {_finalizeNFTTransfer}
+     * Provided bid must match a bid in storage. This is to prevent a race condition
+     * where a bid may change while the acceptBid call is in transit.
+     * A bid cannot be accepted if it cannot be split equally into its shareholders.
+     * This should only revert in rare instances, but is necessary to ensure fairness
+     * to all shareholders.
      */
     function acceptBid(uint256 tokenId, Bid calldata expectedBid)
         external
@@ -358,31 +375,40 @@ contract Market {
 
         IERC20 token = IERC20(bid.currency);
 
+        // Transfer bid share to owner of media
         token.safeTransfer(
             IERC721(mediaContract).ownerOf(tokenId),
             _splitShare(bidShares.owner, bid.amount)
         );
+        // Transfer bid share to creator of media
         token.safeTransfer(
             Media(mediaContract).tokenCreators(tokenId),
             _splitShare(bidShares.creator, bid.amount)
         );
+        // Transfer bid share to previous owner of media (if applicable)
         token.safeTransfer(
             Media(mediaContract).previousTokenOwners(tokenId),
             _splitShare(bidShares.prevOwner, bid.amount)
         );
 
+        // Transfer media to bid recipient
         Media(mediaContract).auctionTransfer(tokenId, bid.recipient);
 
+        // Calculate the bid share for the new owner,
+        // equal to 100 - creatorShare - sellOnFee
         bidShares.owner = Decimal.D256(
             uint256(100)
                 .mul(Decimal.BASE)
                 .sub(_bidShares[tokenId].creator.value)
                 .sub(bid.sellOnFee.value)
         );
+        // Set the previous owner share to the accepted bid's sell-on fee
         bidShares.prevOwner = bid.sellOnFee;
 
-        emit BidFinalized(tokenId, bid);
+        // Remove the accepted bid and the ask for the media
         delete _tokenAsks[tokenId];
         delete _tokenBidders[tokenId][bidder];
+
+        emit BidFinalized(tokenId, bid);
     }
 }
