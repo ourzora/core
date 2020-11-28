@@ -202,10 +202,10 @@ contract Market {
     }
 
     /**
-     * @dev Adds bid shares for a particular tokenId. These bid shares must
+     * @dev Sets bid shares for a particular tokenId. These bid shares must
      * sum to 100.
      */
-    function addBidShares(uint256 tokenId, BidShares memory bidShares)
+    function setBidShares(uint256 tokenId, BidShares memory bidShares)
         public
         onlyMediaCaller
     {

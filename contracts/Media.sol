@@ -223,7 +223,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
 
         tokenCreators[tokenId] = creator;
         previousTokenOwners[tokenId] = creator;
-        Market(marketContract).addBidShares(tokenId, bidShares);
+        Market(marketContract).setBidShares(tokenId, bidShares);
     }
 
     /**

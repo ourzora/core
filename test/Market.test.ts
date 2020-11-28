@@ -92,12 +92,12 @@ describe('Market', () => {
     ).mediaContract();
   }
 
-  async function addBidShares(
+  async function setBidShares(
     auction: Market,
     tokenId: number,
     bidShares?: BidShares
   ) {
-    return auction.addBidShares(tokenId, bidShares);
+    return auction.setBidShares(tokenId, bidShares);
   }
 
   async function setAsk(auction: Market, tokenId: number, ask?: Ask) {
@@ -178,7 +178,7 @@ describe('Market', () => {
     });
   });
 
-  describe('#addBidShares', () => {
+  describe('#setBidShares', () => {
     beforeEach(async () => {
       await deploy();
       await configure();
@@ -188,14 +188,14 @@ describe('Market', () => {
       const auction = await auctionAs(otherWallet);
 
       await expect(
-        addBidShares(auction, defaultTokenId, defaultBidShares)
+        setBidShares(auction, defaultTokenId, defaultBidShares)
       ).rejectedWith('Market: Only media contract');
     });
 
     it('should set the bid shares if called by the media address', async () => {
       const auction = await auctionAs(mockTokenWallet);
 
-      await expect(addBidShares(auction, defaultTokenId, defaultBidShares))
+      await expect(setBidShares(auction, defaultTokenId, defaultBidShares))
         .eventually.fulfilled;
 
       const tokenBidShares = Object.values(
@@ -213,7 +213,7 @@ describe('Market', () => {
       const auction = await auctionAs(mockTokenWallet);
 
       const block = await provider.getBlockNumber();
-      await addBidShares(auction, defaultTokenId, defaultBidShares);
+      await setBidShares(auction, defaultTokenId, defaultBidShares);
       const events = await auction.queryFilter(
         auction.filters.BidShareUpdated(null, null),
         block
@@ -241,7 +241,7 @@ describe('Market', () => {
       };
 
       await expect(
-        addBidShares(auction, defaultTokenId, invalidBidShares)
+        setBidShares(auction, defaultTokenId, invalidBidShares)
       ).rejectedWith('Market: Invalid bid shares, must sum to 100');
     });
   });
@@ -262,7 +262,7 @@ describe('Market', () => {
 
     it('should set the ask if called by the media address', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await addBidShares(auction, defaultTokenId, defaultBidShares);
+      await setBidShares(auction, defaultTokenId, defaultBidShares);
 
       await expect(setAsk(auction, defaultTokenId, defaultAsk)).eventually
         .fulfilled;
@@ -275,7 +275,7 @@ describe('Market', () => {
 
     it('should emit an event if the ask is updated', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await addBidShares(auction, defaultTokenId, defaultBidShares);
+      await setBidShares(auction, defaultTokenId, defaultBidShares);
 
       const block = await provider.getBlockNumber();
       await setAsk(auction, defaultTokenId, defaultAsk);
@@ -296,7 +296,7 @@ describe('Market', () => {
 
     it('should reject if the ask is too low', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await addBidShares(auction, defaultTokenId, defaultBidShares);
+      await setBidShares(auction, defaultTokenId, defaultBidShares);
 
       await expect(
         setAsk(auction, defaultTokenId, {
@@ -359,7 +359,7 @@ describe('Market', () => {
 
     it('should revert if the bidder bids 0 tokens', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await addBidShares(auction, defaultTokenId, defaultBidShares);
+      await setBidShares(auction, defaultTokenId, defaultBidShares);
       await mintCurrency(currency, defaultBid.bidder, defaultBid.amount);
       await approveCurrency(currency, auction.address, bidderWallet);
 
@@ -370,7 +370,7 @@ describe('Market', () => {
 
     it('should accept a valid bid', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await addBidShares(auction, defaultTokenId, defaultBidShares);
+      await setBidShares(auction, defaultTokenId, defaultBidShares);
       await mintCurrency(currency, defaultBid.bidder, defaultBid.amount);
       await approveCurrency(currency, auction.address, bidderWallet);
 
@@ -392,7 +392,7 @@ describe('Market', () => {
 
     it('should accept a valid bid larger than the min bid', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await addBidShares(auction, defaultTokenId, defaultBidShares);
+      await setBidShares(auction, defaultTokenId, defaultBidShares);
 
       const largerValidBid = {
         amount: 130000000,
@@ -428,7 +428,7 @@ describe('Market', () => {
 
     it('should refund the original bid if the bidder bids again', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await addBidShares(auction, defaultTokenId, defaultBidShares);
+      await setBidShares(auction, defaultTokenId, defaultBidShares);
       await mintCurrency(currency, defaultBid.bidder, 5000);
       await approveCurrency(currency, auction.address, bidderWallet);
 
@@ -457,7 +457,7 @@ describe('Market', () => {
 
     it('should emit a bid event', async () => {
       const auction = await auctionAs(mockTokenWallet);
-      await addBidShares(auction, defaultTokenId, defaultBidShares);
+      await setBidShares(auction, defaultTokenId, defaultBidShares);
       await mintCurrency(currency, defaultBid.bidder, 5000);
       await approveCurrency(currency, auction.address, bidderWallet);
 
