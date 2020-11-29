@@ -13,12 +13,15 @@ import { Media } from '../typechain/Media';
 import {
   approveCurrency,
   deployCurrency,
+  EIP712Sig,
   getBalance,
   mintCurrency,
+  signMintWithSig,
   signPermit,
   toNumWei,
 } from './utils';
-import { sha256 } from 'ethers/lib/utils';
+import { formatUnits, sha256 } from 'ethers/lib/utils';
+import exp from 'constants';
 
 chai.use(asPromised);
 
@@ -45,6 +48,13 @@ type BidShares = {
   owner: DecimalValue;
   prevOwner: DecimalValue;
   creator: DecimalValue;
+};
+
+type MediaData = {
+  tokenURI: string;
+  metadataURI: string;
+  contentHash: Bytes;
+  metadataHash: Bytes;
 };
 
 type Ask = {
@@ -117,21 +127,39 @@ describe('Media', () => {
 
   async function mint(
     token: Media,
-    creator: string,
     metadataURI: string,
     tokenURI: string,
     contentHash: Bytes,
     metadataHash: Bytes,
     shares: BidShares
   ) {
-    return token.mint(
-      creator,
+    const data: MediaData = {
       tokenURI,
       metadataURI,
       contentHash,
       metadataHash,
-      shares
-    );
+    };
+    return token.mint(data, shares);
+  }
+
+  async function mintWithSig(
+    token: Media,
+    creator: string,
+    tokenURI: string,
+    metadataURI: string,
+    contentHash: Bytes,
+    metadataHash: Bytes,
+    shares: BidShares,
+    sig: EIP712Sig
+  ) {
+    const data: MediaData = {
+      tokenURI,
+      metadataURI,
+      contentHash,
+      metadataHash,
+    };
+
+    return token.mintWithSig(creator, data, shares, sig);
   }
 
   async function setAsk(token: Media, tokenId: number, ask: Ask) {
@@ -175,7 +203,6 @@ describe('Media', () => {
 
     await mint(
       asCreator,
-      creatorWallet.address,
       metadataURI,
       tokenURI,
       contentHashBytes,
@@ -248,7 +275,6 @@ describe('Media', () => {
       await expect(
         mint(
           token,
-          creatorWallet.address,
           metadataURI,
           tokenURI,
           contentHashBytes,
@@ -287,7 +313,6 @@ describe('Media', () => {
       await expect(
         mint(
           token,
-          creatorWallet.address,
           metadataURI,
           tokenURI,
           zeroContentHashBytes,
@@ -307,7 +332,6 @@ describe('Media', () => {
       await expect(
         mint(
           token,
-          creatorWallet.address,
           metadataURI,
           tokenURI,
           contentHashBytes,
@@ -323,7 +347,6 @@ describe('Media', () => {
       await expect(
         mint(
           token,
-          creatorWallet.address,
           metadataURI,
           tokenURI,
           contentHashBytes,
@@ -345,7 +368,6 @@ describe('Media', () => {
       await expect(
         mint(
           token,
-          creatorWallet.address,
           metadataURI,
           tokenURI,
           contentHashBytes,
@@ -363,19 +385,11 @@ describe('Media', () => {
       const token = await tokenAs(creatorWallet);
 
       await expect(
-        mint(
-          token,
-          creatorWallet.address,
-          metadataURI,
-          '',
-          zeroContentHashBytes,
-          metadataHashBytes,
-          {
-            prevOwner: Decimal.new(10),
-            creator: Decimal.new(90),
-            owner: Decimal.new(0),
-          }
-        )
+        mint(token, metadataURI, '', zeroContentHashBytes, metadataHashBytes, {
+          prevOwner: Decimal.new(10),
+          creator: Decimal.new(90),
+          owner: Decimal.new(0),
+        })
       ).rejectedWith('Media: specified uri must be non-empty');
     });
 
@@ -383,19 +397,11 @@ describe('Media', () => {
       const token = await tokenAs(creatorWallet);
 
       await expect(
-        mint(
-          token,
-          creatorWallet.address,
-          '',
-          tokenURI,
-          zeroContentHashBytes,
-          metadataHashBytes,
-          {
-            prevOwner: Decimal.new(10),
-            creator: Decimal.new(90),
-            owner: Decimal.new(0),
-          }
-        )
+        mint(token, '', tokenURI, zeroContentHashBytes, metadataHashBytes, {
+          prevOwner: Decimal.new(10),
+          creator: Decimal.new(90),
+          owner: Decimal.new(0),
+        })
       ).rejectedWith('Media: specified uri must be non-empty');
     });
 
@@ -405,7 +411,6 @@ describe('Media', () => {
       await expect(
         mint(
           token,
-          creatorWallet.address,
           metadataURI,
           tokenURI,
           contentHashBytes,
@@ -423,20 +428,216 @@ describe('Media', () => {
       const token = await tokenAs(creatorWallet);
 
       await expect(
-        mint(
+        mint(token, metadataURI, '222', contentHashBytes, metadataHashBytes, {
+          prevOwner: Decimal.new(99),
+          owner: Decimal.new(1),
+          creator: Decimal.new(1),
+        })
+      ).rejectedWith('Market: Invalid bid shares, must sum to 100');
+    });
+  });
+
+  describe('#mintWithSig', () => {
+    beforeEach(async () => {
+      await deploy();
+    });
+
+    it('should mint a token for a given creator with a valid signature', async () => {
+      const token = await tokenAs(otherWallet);
+      const market = await MarketFactory.connect(auctionAddress, otherWallet);
+      const sig = await signMintWithSig(
+        creatorWallet,
+        token.address,
+        creatorWallet.address,
+        tokenURI,
+        metadataURI,
+        Decimal.new(5).value.toString(),
+        1
+      );
+
+      const beforeNonce = await token.mintWithSigNonces(creatorWallet.address);
+      await expect(
+        mintWithSig(
           token,
           creatorWallet.address,
+          tokenURI,
           metadataURI,
-          '222',
           contentHashBytes,
           metadataHashBytes,
           {
-            prevOwner: Decimal.new(99),
-            owner: Decimal.new(1),
-            creator: Decimal.new(1),
-          }
+            prevOwner: Decimal.new(0),
+            owner: Decimal.new(95),
+            creator: Decimal.new(5),
+          },
+          sig
         )
-      ).rejectedWith('Market: Invalid bid shares, must sum to 100');
+      ).fulfilled;
+
+      const recovered = await token.tokenCreators(0);
+      const recoveredTokenURI = await token.tokenURI(0);
+      const recoveredMetadataURI = await token.tokenMetadataURI(0);
+      const recoveredContentHash = await token.tokenContentHashes(0);
+      const recoveredMetadataHash = await token.tokenMetadataHashes(0);
+      const recoveredCreatorBidShare = formatUnits(
+        (await market.bidSharesForToken(0)).creator.value,
+        'ether'
+      );
+      const afterNonce = await token.mintWithSigNonces(creatorWallet.address);
+
+      expect(recovered).to.eq(creatorWallet.address);
+      expect(recoveredTokenURI).to.eq(tokenURI);
+      expect(recoveredMetadataURI).to.eq(metadataURI);
+      expect(recoveredContentHash).to.eq(contentHash);
+      expect(recoveredMetadataHash).to.eq(metadataHash);
+      expect(recoveredCreatorBidShare).to.eq('5.0');
+      expect(toNumWei(afterNonce)).to.eq(toNumWei(beforeNonce) + 1);
+    });
+
+    it('should not mint a token for a different creator', async () => {
+      const token = await tokenAs(otherWallet);
+      const sig = await signMintWithSig(
+        bidderWallet,
+        token.address,
+        creatorWallet.address,
+        tokenURI,
+        metadataURI,
+        Decimal.new(5).value.toString(),
+        1
+      );
+
+      await expect(
+        mintWithSig(
+          token,
+          creatorWallet.address,
+          tokenURI,
+          metadataURI,
+          contentHashBytes,
+          metadataHashBytes,
+          {
+            prevOwner: Decimal.new(0),
+            owner: Decimal.new(95),
+            creator: Decimal.new(5),
+          },
+          sig
+        )
+      ).rejectedWith('Media: Signature invalid');
+    });
+
+    it('should not mint a token for a different token URI', async () => {
+      const token = await tokenAs(otherWallet);
+      const sig = await signMintWithSig(
+        creatorWallet,
+        token.address,
+        creatorWallet.address,
+        tokenURI,
+        metadataURI,
+        Decimal.new(5).value.toString(),
+        1
+      );
+
+      await expect(
+        mintWithSig(
+          token,
+          creatorWallet.address,
+          tokenURI + '1',
+          metadataURI,
+          contentHashBytes,
+          metadataHashBytes,
+          {
+            prevOwner: Decimal.new(0),
+            owner: Decimal.new(95),
+            creator: Decimal.new(5),
+          },
+          sig
+        )
+      ).rejectedWith('Media: Signature invalid');
+    });
+    it('should not mint a token for a different metadata URI', async () => {
+      const token = await tokenAs(otherWallet);
+      const sig = await signMintWithSig(
+        creatorWallet,
+        token.address,
+        creatorWallet.address,
+        tokenURI,
+        metadataURI,
+        Decimal.new(5).value.toString(),
+        1
+      );
+
+      await expect(
+        mintWithSig(
+          token,
+          creatorWallet.address,
+          tokenURI,
+          metadataURI + '1',
+          contentHashBytes,
+          metadataHashBytes,
+          {
+            prevOwner: Decimal.new(0),
+            owner: Decimal.new(95),
+            creator: Decimal.new(5),
+          },
+          sig
+        )
+      ).rejectedWith('Media: Signature invalid');
+    });
+    it('should not mint a token for a different creator bid share', async () => {
+      const token = await tokenAs(otherWallet);
+      const sig = await signMintWithSig(
+        creatorWallet,
+        token.address,
+        creatorWallet.address,
+        tokenURI,
+        metadataURI,
+        Decimal.new(5).value.toString(),
+        1
+      );
+
+      await expect(
+        mintWithSig(
+          token,
+          creatorWallet.address,
+          tokenURI,
+          metadataURI,
+          contentHashBytes,
+          metadataHashBytes,
+          {
+            prevOwner: Decimal.new(0),
+            owner: Decimal.new(100),
+            creator: Decimal.new(0),
+          },
+          sig
+        )
+      ).rejectedWith('Media: Signature invalid');
+    });
+    it('should not mint a token with an invalid deadline', async () => {
+      const token = await tokenAs(otherWallet);
+      const sig = await signMintWithSig(
+        creatorWallet,
+        token.address,
+        creatorWallet.address,
+        tokenURI,
+        metadataURI,
+        Decimal.new(5).value.toString(),
+        1
+      );
+
+      await expect(
+        mintWithSig(
+          token,
+          creatorWallet.address,
+          tokenURI,
+          metadataURI,
+          contentHashBytes,
+          metadataHashBytes,
+          {
+            prevOwner: Decimal.new(0),
+            owner: Decimal.new(95),
+            creator: Decimal.new(5),
+          },
+          { ...sig, deadline: '1' }
+        )
+      ).rejectedWith('Media: mintWithSig expired');
     });
   });
 
@@ -527,7 +728,6 @@ describe('Media', () => {
       await deploy();
       await mint(
         await tokenAs(creatorWallet),
-        creatorWallet.address,
         metadataURI,
         '1111',
         otherContentHashBytes,
@@ -816,7 +1016,6 @@ describe('Media', () => {
       const token = await tokenAs(creatorWallet);
       await mint(
         token,
-        creatorWallet.address,
         metadataURI,
         tokenURI,
         contentHashBytes,
@@ -966,7 +1165,6 @@ describe('Media', () => {
 
       await mint(
         token,
-        creatorWallet.address,
         metadataURI,
         tokenURI,
         otherContentHashBytes,
@@ -1042,7 +1240,6 @@ describe('Media', () => {
 
       await mint(
         token,
-        creatorWallet.address,
         metadataURI,
         tokenURI,
         otherContentHashBytes,
@@ -1100,9 +1297,7 @@ describe('Media', () => {
         // NOTE: We set the chain ID to 1 because of an error with ganache-core: https://github.com/trufflesuite/ganache-core/issues/515
         1
       );
-      await expect(
-        token.permit(otherWallet.address, 0, sig.deadline, sig.v, sig.r, sig.s)
-      ).fulfilled;
+      await expect(token.permit(otherWallet.address, 0, sig)).fulfilled;
       await expect(token.getApproved(0)).eventually.eq(otherWallet.address);
     });
 
@@ -1115,9 +1310,9 @@ describe('Media', () => {
         0,
         1
       );
-      await expect(
-        token.permit(otherWallet.address, 0, sig.deadline, sig.v, sig.r, sig.s)
-      ).rejectedWith('Media: Signature invalid');
+      await expect(token.permit(otherWallet.address, 0, sig)).rejectedWith(
+        'Media: Signature invalid'
+      );
       await expect(token.getApproved(0)).eventually.eq(AddressZero);
     });
   });

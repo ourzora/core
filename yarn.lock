@@ -1291,6 +1291,14 @@
     "@ethersproject/bytes" "^5.0.4"
     js-sha3 "0.5.7"
 
+"@ethersproject/keccak256@^5.0.6":
+  version "5.0.6"
+  resolved "https://registry.yarnpkg.com/@ethersproject/keccak256/-/keccak256-5.0.6.tgz#5b5ba715ef1be86efde5c271f896fa0daf0e1efe"
+  integrity sha512-eJ4Id/i2rwrf5JXEA7a12bG1phuxjj47mPZgDUbttuNBodhSuZF2nEO5QdpaRjmlphQ8Kt9PNqY/z7lhtJptZg==
+  dependencies:
+    "@ethersproject/bytes" "^5.0.4"
+    js-sha3 "0.5.7"
+
 "@ethersproject/logger@5.0.6", "@ethersproject/logger@>=5.0.0-beta.129", "@ethersproject/logger@^5.0.5":
   version "5.0.6"
   resolved "https://registry.yarnpkg.com/@ethersproject/logger/-/logger-5.0.6.tgz"

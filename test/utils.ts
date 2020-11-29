@@ -1,5 +1,5 @@
 import { BaseErc20Factory, MediaFactory } from '../typechain';
-import { BigNumber, BigNumberish, Wallet } from 'ethers';
+import { BigNumber, BigNumberish, Bytes, Wallet } from 'ethers';
 import { MaxUint256, AddressZero } from '@ethersproject/constants';
 import { generatedWallets } from '../utils/generatedWallets';
 import { JsonRpcProvider } from '@ethersproject/providers';
@@ -15,6 +15,8 @@ import {
   fromRpcSig,
   pubToAddress,
 } from 'ethereumjs-util';
+import { toUtf8Bytes } from 'ethers/lib/utils';
+import { keccak256 } from '@ethersproject/keccak256';
 
 let provider = new JsonRpcProvider();
 let [deployerWallet] = generatedWallets(provider);
@@ -54,7 +56,7 @@ export function toNumWei(val: BigNumber) {
   return parseFloat(formatUnits(val, 'wei'));
 }
 
-export type Permit = {
+export type EIP712Sig = {
   deadline: BigNumberish;
   v: any;
   r: any;
@@ -68,7 +70,7 @@ export async function signPermit(
   tokenId: number,
   chainId: number
 ) {
-  return new Promise<Permit>(async (res, reject) => {
+  return new Promise<EIP712Sig>(async (res, reject) => {
     let nonce;
     const mediaContract = MediaFactory.connect(tokenAddress, owner);
 
@@ -112,6 +114,78 @@ export async function signPermit(
           message: {
             spender: toAddress,
             tokenId,
+            nonce,
+            deadline,
+          },
+        },
+      });
+      const response = fromRpcSig(sig);
+      res({
+        r: response.r,
+        s: response.s,
+        v: response.v,
+        deadline: deadline.toString(),
+      });
+    } catch (e) {
+      console.error(e);
+      reject(e);
+    }
+  });
+}
+
+export async function signMintWithSig(
+  owner: Wallet,
+  tokenAddress: string,
+  creator: string,
+  tokenURI: string,
+  metadataURI: string,
+  creatorShare: BigNumberish,
+  chainId: number
+) {
+  return new Promise<EIP712Sig>(async (res, reject) => {
+    let nonce;
+    const mediaContract = MediaFactory.connect(tokenAddress, owner);
+
+    try {
+      nonce = (await mediaContract.mintWithSigNonces(creator)).toNumber();
+    } catch (e) {
+      console.error('NONCE', e);
+      reject(e);
+      return;
+    }
+
+    const deadline = Math.floor(new Date().getTime() / 1000) + 60 * 60 * 24; // 24 hours
+    const name = await mediaContract.name();
+
+    try {
+      const sig = signTypedData(Buffer.from(owner.privateKey.slice(2), 'hex'), {
+        data: {
+          types: {
+            EIP712Domain: [
+              { name: 'name', type: 'string' },
+              { name: 'version', type: 'string' },
+              { name: 'chainId', type: 'uint256' },
+              { name: 'verifyingContract', type: 'address' },
+            ],
+            MintWithSig: [
+              { name: 'tokenURI', type: 'string' },
+              { name: 'metadataURI', type: 'string' },
+              { name: 'creatorShare', type: 'uint256' },
+              { name: 'nonce', type: 'uint256' },
+              { name: 'deadline', type: 'uint256' },
+            ],
+          },
+          primaryType: 'MintWithSig',
+          domain: {
+            name,
+            version: '1',
+            chainId,
+            verifyingContract: mediaContract.address,
+          },
+          message: {
+            tokenURI,
+            metadataURI,
+            creatorShare,
             nonce,
             deadline,
           },
