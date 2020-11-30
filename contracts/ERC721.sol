@@ -1,5 +1,17 @@
 // SPDX-License-Identifier: MIT
 
+/**
+ * NOTE: This file is a clone of the OpenZeppelin ERC721.sol contract. It was forked from https://github.com/OpenZeppelin/openzeppelin-contracts
+ * at commit 1ada3b633e5bfd9d4ffe0207d64773a11f5a7c40
+ *
+ *
+ * The following functions needed to be modified, prompting this clone:
+ *  - `_tokenURIs` visibility was changed from private to internal to support updating URIs after minting
+ *  - `_baseURI` visibiility was changed from private to internal to support fetching token URI even after the token was burned
+ *  - `_INTERFACE_ID_ERC721_METADATA` is no longer registered as an interface because _tokenURI now returns raw content instead of a JSON file, and supports updatable URIs
+ *  - `_approve` visibility was changed from private to internal to support EIP-2612 flavored permits and approval revocation by an approved address
+ */
+
 pragma solidity 0.6.8;
 
 import "@openzeppelin/contracts/GSN/Context.sol";
@@ -36,10 +48,10 @@ contract ERC721 is
     bytes4 private constant _ERC721_RECEIVED = 0x150b7a02;
 
     // Mapping from holder address to their (enumerable) set of owned tokens
-    mapping(address => EnumerableSet.UintSet) internal _holderTokens;
+    mapping(address => EnumerableSet.UintSet) private _holderTokens;
 
     // Enumerable mapping from token ids to their owners
-    EnumerableMap.UintToAddressMap internal _tokenOwners;
+    EnumerableMap.UintToAddressMap private _tokenOwners;
 
     // Mapping from token ID to approved address
     mapping(uint256 => address) private _tokenApprovals;
