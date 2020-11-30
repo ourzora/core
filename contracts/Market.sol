@@ -353,7 +353,8 @@ contract Market {
         require(
             bid.amount == expectedBid.amount &&
                 bid.currency == expectedBid.currency &&
-                bid.sellOnFee.value == expectedBid.sellOnFee.value,
+                bid.sellOnFee.value == expectedBid.sellOnFee.value &&
+                bid.recipient == expectedBid.recipient,
             "Market: Unexpected bid found."
         );
         require(
