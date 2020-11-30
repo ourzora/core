@@ -137,8 +137,8 @@ export async function signMintWithSig(
   owner: Wallet,
   tokenAddress: string,
   creator: string,
-  tokenURI: string,
-  metadataURI: string,
+  contentHash: string,
+  metadataHash: string,
   creatorShare: BigNumberish,
   chainId: number
 ) {
@@ -168,8 +168,8 @@ export async function signMintWithSig(
               { name: 'verifyingContract', type: 'address' },
             ],
             MintWithSig: [
-              { name: 'tokenURI', type: 'string' },
-              { name: 'metadataURI', type: 'string' },
+              { name: 'contentHash', type: 'bytes32' },
+              { name: 'metadataHash', type: 'bytes32' },
               { name: 'creatorShare', type: 'uint256' },
               { name: 'nonce', type: 'uint256' },
               { name: 'deadline', type: 'uint256' },
@@ -183,8 +183,8 @@ export async function signMintWithSig(
             verifyingContract: mediaContract.address,
           },
           message: {
-            tokenURI,
-            metadataURI,
+            contentHash,
+            metadataHash,
             creatorShare,
             nonce,
             deadline,

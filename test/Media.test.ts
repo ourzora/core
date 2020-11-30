@@ -20,7 +20,12 @@ import {
   signPermit,
   toNumWei,
 } from './utils';
-import { formatUnits, sha256 } from 'ethers/lib/utils';
+import {
+  arrayify,
+  formatBytes32String,
+  formatUnits,
+  sha256,
+} from 'ethers/lib/utils';
 import exp from 'constants';
 
 chai.use(asPromised);
@@ -449,8 +454,8 @@ describe('Media', () => {
         creatorWallet,
         token.address,
         creatorWallet.address,
-        tokenURI,
-        metadataURI,
+        contentHash,
+        metadataHash,
         Decimal.new(5).value.toString(),
         1
       );
@@ -523,14 +528,19 @@ describe('Media', () => {
       ).rejectedWith('Media: Signature invalid');
     });
 
-    it('should not mint a token for a different token URI', async () => {
+    it('should not mint a token for a different contentHash', async () => {
+      const badContent = 'bad bad bad';
+      const badContentHex = formatBytes32String(badContent);
+      const badContentHash = sha256(badContentHex);
+      const badContentHashBytes = arrayify(badContentHash);
+
       const token = await tokenAs(otherWallet);
       const sig = await signMintWithSig(
         creatorWallet,
         token.address,
         creatorWallet.address,
-        tokenURI,
-        metadataURI,
+        contentHash,
+        metadataHash,
         Decimal.new(5).value.toString(),
         1
       );
@@ -539,9 +549,9 @@ describe('Media', () => {
         mintWithSig(
           token,
           creatorWallet.address,
-          tokenURI + '1',
+          tokenURI,
           metadataURI,
-          contentHashBytes,
+          badContentHashBytes,
           metadataHashBytes,
           {
             prevOwner: Decimal.new(0),
@@ -552,14 +562,18 @@ describe('Media', () => {
         )
       ).rejectedWith('Media: Signature invalid');
     });
-    it('should not mint a token for a different metadata URI', async () => {
+    it('should not mint a token for a different metadataHash', async () => {
+      const badMetadata = '{"some": "bad", "data": ":)"}';
+      const badMetadataHex = formatBytes32String(badMetadata);
+      const badMetadataHash = sha256(badMetadataHex);
+      const badMetadataHashBytes = arrayify(badMetadataHash);
       const token = await tokenAs(otherWallet);
       const sig = await signMintWithSig(
         creatorWallet,
         token.address,
         creatorWallet.address,
-        tokenURI,
-        metadataURI,
+        contentHash,
+        metadataHash,
         Decimal.new(5).value.toString(),
         1
       );
@@ -569,9 +583,9 @@ describe('Media', () => {
           token,
           creatorWallet.address,
           tokenURI,
-          metadataURI + '1',
+          metadataURI,
           contentHashBytes,
-          metadataHashBytes,
+          badMetadataHashBytes,
           {
             prevOwner: Decimal.new(0),
             owner: Decimal.new(95),
