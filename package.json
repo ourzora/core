@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "deploy": "ts-node scripts/deploy.ts",
-    "build": "next build",
-    "start": "next start",
+    "build": "yarn build:contracts",
     "test": "hardhat test",
     "compile": "hardhat clean && hardhat compile",
     "typechain": "rm -rf ./typechain && typechain --show-stack-traces --target ethers-v5 --outDir ./typechain 'artifacts/!(build-info)/**/!(*.dbg*)*.json'",
