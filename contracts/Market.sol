@@ -21,6 +21,21 @@ contract Market {
      * *******
      */
     struct Bid {
+        // Identifier of the bid
+        uint256 id;
+        // Amount of the currency being bid
+        uint256 amount;
+        // Address to the ERC20 token being used to bid
+        address currency;
+        // Address of the bidder
+        address bidder;
+        // Address of the recipient
+        address recipient;
+        // % of the next sale to award the previous owner
+        Decimal.D256 sellOnFee;
+    }
+
+    struct BidData {
         // Amount of the currency being bid
         uint256 amount;
         // Address to the ERC20 token being used to bid
@@ -80,6 +95,9 @@ contract Market {
 
     // Mapping from token to the current ask for the token
     mapping(uint256 => Ask) private _tokenAsks;
+
+    // Mapping from token to the current bid counter for the token
+    mapping(uint256 => Counters.Counter) private _tokenBidCounter;
 
     /* *********
      * Modifiers
@@ -264,57 +282,81 @@ contract Market {
      */
     function setBid(
         uint256 tokenId,
-        Bid memory bid,
+        BidData memory bidData,
         address spender
     )
         public
         onlyMediaCaller
-        onlyTransferAllowanceAndSolvent(spender, bid.currency, bid.amount)
+        onlyTransferAllowanceAndSolvent(
+            spender,
+            bidData.currency,
+            bidData.amount
+        )
     {
         BidShares memory bidShares = _bidShares[tokenId];
         require(
-            bidShares.creator.value.add(bid.sellOnFee.value) <=
+            bidShares.creator.value.add(bidData.sellOnFee.value) <=
                 uint256(100).mul(Decimal.BASE),
             "Market: Sell on fee invalid for share splitting"
         );
-        require(bid.bidder != address(0), "Market: Bidder cannot be 0 address");
-        require(bid.amount != 0, "Market: cannot bid amount of 0");
+        require(
+            bidData.bidder != address(0),
+            "Market: Bidder cannot be 0 address"
+        );
+        require(bidData.amount != 0, "Market: cannot bid amount of 0");
 
-        Bid storage existingBid = _tokenBidders[tokenId][bid.bidder];
+        Bid storage existingBid = _tokenBidders[tokenId][bidData.bidder];
 
         // If there is an existing bid, refund it before continuing
         if (existingBid.amount > 0) {
-            removeBid(tokenId, bid.bidder);
+            removeBid(tokenId, bidData.bidder);
         }
 
-        IERC20 token = IERC20(bid.currency);
+        uint256 amountTransferred =
+            safeERC20Transfer(bidData.currency, spender, bidData.amount);
 
-        // We must check the balance that was actually transferred to the market,
-        // as some tokens impose a transfer fee and would not actually transfer the
-        // full amount to the market, resulting in locked funds for refunds & bid acceptance
-        uint256 beforeBalance = token.balanceOf(address(this));
-        token.safeTransferFrom(spender, address(this), bid.amount);
-        uint256 afterBalance = token.balanceOf(address(this));
-        _tokenBidders[tokenId][bid.bidder] = Bid(
-            afterBalance.sub(beforeBalance),
-            bid.currency,
-            bid.bidder,
-            bid.recipient,
-            bid.sellOnFee
-        );
-        emit BidCreated(tokenId, bid);
+        Bid memory newBid =
+            Bid(
+                _tokenBidCounter[tokenId].current(),
+                amountTransferred,
+                bidData.currency,
+                bidData.bidder,
+                bidData.recipient,
+                bidData.sellOnFee
+            );
+
+        _tokenBidders[tokenId][bidData.bidder] = newBid;
+
+        _tokenBidCounter[tokenId].increment();
+        emit BidCreated(tokenId, newBid);
 
         // If a bid meets the criteria for an ask, automatically accept the bid.
         // If no ask is set or the bid does not meet the requirements, ignore.
         if (
             _tokenAsks[tokenId].currency != address(0) &&
-            bid.currency == _tokenAsks[tokenId].currency &&
-            bid.amount >= _tokenAsks[tokenId].amount &&
-            bid.sellOnFee.value >= _tokenAsks[tokenId].sellOnFee.value
+            bidData.currency == _tokenAsks[tokenId].currency &&
+            bidData.amount >= _tokenAsks[tokenId].amount &&
+            bidData.sellOnFee.value >= _tokenAsks[tokenId].sellOnFee.value
         ) {
             // Finalize exchange
-            _finalizeNFTTransfer(tokenId, bid.bidder);
+            _finalizeNFTTransfer(tokenId, bidData.bidder);
         }
+    }
+
+    function safeERC20Transfer(
+        address tokenAddress,
+        address spender,
+        uint256 amount
+    ) internal returns (uint256) {
+        IERC20 token = IERC20(tokenAddress);
+
+        // We must check the balance that was actually transferred to the market,
+        // as some tokens impose a transfer fee and would not actually transfer the
+        // full amount to the market, resulting in locked funds for refunds & bid acceptance
+        uint256 beforeBalance = token.balanceOf(address(this));
+        token.safeTransferFrom(spender, address(this), amount);
+        uint256 afterBalance = token.balanceOf(address(this));
+        return afterBalance.sub(beforeBalance);
     }
 
     /**
@@ -351,7 +393,8 @@ contract Market {
         Bid memory bid = _tokenBidders[tokenId][expectedBid.bidder];
         require(bid.amount > 0, "Market: cannot accept bid of 0");
         require(
-            bid.amount == expectedBid.amount &&
+            bid.id == expectedBid.id &&
+                bid.amount == expectedBid.amount &&
                 bid.currency == expectedBid.currency &&
                 bid.sellOnFee.value == expectedBid.sellOnFee.value &&
                 bid.recipient == expectedBid.recipient,
@@ -406,8 +449,7 @@ contract Market {
         // Set the previous owner share to the accepted bid's sell-on fee
         bidShares.prevOwner = bid.sellOnFee;
 
-        // Remove the accepted bid and the ask for the media
-        delete _tokenAsks[tokenId];
+        // Remove the accepted bid for the media
         delete _tokenBidders[tokenId][bidder];
 
         emit BidFinalized(tokenId, bid);

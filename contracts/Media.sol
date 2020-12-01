@@ -310,13 +310,16 @@ contract Media is ERC721Burnable, ReentrancyGuard {
         Market(marketContract).removeAsk(tokenId);
     }
 
-    function setBid(uint256 tokenId, Market.Bid memory bid)
+    function setBid(uint256 tokenId, Market.BidData memory bidData)
         public
         nonReentrant
         onlyExistingToken(tokenId)
     {
-        require(msg.sender == bid.bidder, "Market: Bidder must be msg sender");
-        Market(marketContract).setBid(tokenId, bid, msg.sender);
+        require(
+            msg.sender == bidData.bidder,
+            "Market: Bidder must be msg sender"
+        );
+        Market(marketContract).setBid(tokenId, bidData, msg.sender);
     }
 
     function removeBid(uint256 tokenId)

@@ -69,6 +69,15 @@ type Ask = {
 };
 
 type Bid = {
+  id: BigNumberish;
+  currency: string;
+  amount: BigNumberish;
+  bidder: string;
+  recipient: string;
+  sellOnFee: { value: BigNumberish };
+};
+
+type BidData = {
   currency: string;
   amount: BigNumberish;
   bidder: string;
@@ -99,7 +108,7 @@ describe('Media', () => {
     currency: '0x41A322b28D0fF354040e2CbC676F0320d8c8850d',
     sellOnFee: Decimal.new(0),
   };
-  const defaultBid = (
+  const defaultBidData = (
     currency: string,
     bidder: string,
     recipient?: string
@@ -110,6 +119,19 @@ describe('Media', () => {
     recipient: recipient || bidder,
     sellOnFee: Decimal.new(10),
   });
+
+  const defaultBid = (
+    currency: string,
+    bidder: string,
+    recipient?: string
+  ) => ({
+    id: 0,
+    amount: 100,
+    currency,
+    bidder,
+    recipient: recipient || bidder,
+    sellOnFee: Decimal.new(10),
+  })
 
   let auctionAddress: string;
   let tokenAddress: string;
@@ -175,8 +197,8 @@ describe('Media', () => {
     return token.removeAsk(tokenId);
   }
 
-  async function setBid(token: Media, bid: Bid, tokenId: number) {
-    return token.setBid(tokenId, bid);
+  async function setBid(token: Media, bidData: BidData, tokenId: number) {
+    return token.setBid(tokenId, bidData);
   }
 
   async function removeBid(token: Media, tokenId: number) {
@@ -194,6 +216,8 @@ describe('Media', () => {
     const asOwner = await tokenAs(ownerWallet);
     const asBidder = await tokenAs(bidderWallet);
     const asOther = await tokenAs(otherWallet);
+
+    const auction = MarketFactory.connect(auctionAddress, creatorWallet);
 
     await mintCurrency(currencyAddr, creatorWallet.address, 10000);
     await mintCurrency(currencyAddr, prevOwnerWallet.address, 10000);
@@ -217,30 +241,31 @@ describe('Media', () => {
 
     await setBid(
       asPrevOwner,
-      defaultBid(currencyAddr, prevOwnerWallet.address),
+      defaultBidData(currencyAddr, prevOwnerWallet.address),
       tokenId
     );
-    await acceptBid(asCreator, tokenId, {
-      ...defaultBid(currencyAddr, prevOwnerWallet.address),
-    });
+
+    let bid = await auction.bidForTokenBidder(tokenId, prevOwnerWallet.address);
+    await acceptBid(asCreator, tokenId, bid);
     await setBid(
       asOwner,
-      defaultBid(currencyAddr, ownerWallet.address),
+      defaultBidData(currencyAddr, ownerWallet.address),
       tokenId
     );
+    bid = await auction.bidForTokenBidder(tokenId, ownerWallet.address);
     await acceptBid(
       asPrevOwner,
       tokenId,
-      defaultBid(currencyAddr, ownerWallet.address)
+      bid
     );
     await setBid(
       asBidder,
-      defaultBid(currencyAddr, bidderWallet.address),
+      defaultBidData(currencyAddr, bidderWallet.address),
       tokenId
     );
     await setBid(
       asOther,
-      defaultBid(currencyAddr, otherWallet.address),
+      defaultBidData(currencyAddr, otherWallet.address),
       tokenId
     );
   }
@@ -754,7 +779,7 @@ describe('Media', () => {
     it('should revert if the token bidder does not have a high enough allowance for their bidding currency', async () => {
       const token = await tokenAs(bidderWallet);
       await expect(
-        token.setBid(0, defaultBid(currencyAddr, bidderWallet.address))
+        token.setBid(0, defaultBidData(currencyAddr, bidderWallet.address))
       ).rejectedWith('Market: allowance not high enough to transfer token');
     });
 
@@ -762,7 +787,7 @@ describe('Media', () => {
       const token = await tokenAs(bidderWallet);
       await approveCurrency(currencyAddr, auctionAddress, bidderWallet);
       await expect(
-        token.setBid(0, defaultBid(currencyAddr, bidderWallet.address))
+        token.setBid(0, defaultBidData(currencyAddr, bidderWallet.address))
       ).rejectedWith('Market: Not enough funds to transfer token');
     });
 
@@ -771,7 +796,7 @@ describe('Media', () => {
       await approveCurrency(currencyAddr, auctionAddress, bidderWallet);
       await mintCurrency(currencyAddr, bidderWallet.address, 100000);
       await expect(
-        token.setBid(0, defaultBid(currencyAddr, bidderWallet.address))
+        token.setBid(0, defaultBidData(currencyAddr, bidderWallet.address))
       ).fulfilled;
       const balance = await getBalance(currencyAddr, bidderWallet.address);
       expect(toNumWei(balance)).eq(100000 - 100);
@@ -784,7 +809,7 @@ describe('Media', () => {
       await setAsk(asOwner, 1, { ...defaultAsk, currency: currencyAddr });
 
       await expect(
-        token.setBid(1, defaultBid(currencyAddr, bidderWallet.address))
+        token.setBid(1, defaultBidData(currencyAddr, bidderWallet.address))
       ).fulfilled;
 
       await expect(token.ownerOf(1)).eventually.eq(bidderWallet.address);
@@ -801,7 +826,7 @@ describe('Media', () => {
       });
 
       await expect(
-        token.setBid(1, defaultBid(currencyAddr, bidderWallet.address))
+        token.setBid(1, defaultBidData(currencyAddr, bidderWallet.address))
       ).fulfilled;
 
       await expect(token.ownerOf(1)).eventually.eq(ownerWallet.address);
@@ -831,6 +856,54 @@ describe('Media', () => {
 
       expect(afterBalance).eq(beforeBalance - 100);
     });
+
+    it("should increment the bid id", async () => {
+      const asCreator = await tokenAs(creatorWallet);
+      const asPrevOwner = await tokenAs(prevOwnerWallet);
+      const asOwner = await tokenAs(ownerWallet);
+
+      const auction = MarketFactory.connect(auctionAddress, creatorWallet);
+
+      await mintCurrency(currencyAddr, prevOwnerWallet.address, 10000);
+      await mintCurrency(currencyAddr, ownerWallet.address, 10000);
+      await approveCurrency(currencyAddr, auctionAddress, prevOwnerWallet);
+      await approveCurrency(currencyAddr, auctionAddress, ownerWallet);
+
+      await mint(
+        asCreator,
+        metadataURI,
+        tokenURI,
+        contentHashBytes,
+        metadataHashBytes,
+        defaultBidShares
+      );
+
+      await setBid(
+        asPrevOwner,
+        defaultBidData(currencyAddr, prevOwnerWallet.address),
+        0
+      );
+
+      let bid = await auction.bidForTokenBidder(0, prevOwnerWallet.address);
+      expect(toNumWei(bid.id)).eq(0)
+
+      await setBid(
+        asPrevOwner,
+        defaultBidData(currencyAddr, prevOwnerWallet.address),
+        0
+      );
+      bid = await auction.bidForTokenBidder(0, prevOwnerWallet.address);
+      expect(toNumWei(bid.id)).eq(1)
+
+
+      await setBid(
+        asOwner,
+        defaultBidData(currencyAddr, ownerWallet.address),
+        0
+      );
+      bid = await auction.bidForTokenBidder(0, ownerWallet.address);
+      expect(toNumWei(bid.id)).eq(2)
+    })
   });
 
   describe('#removeBid', () => {
@@ -909,11 +982,11 @@ describe('Media', () => {
       const token = await tokenAs(ownerWallet);
       const auction = await MarketFactory.connect(auctionAddress, bidderWallet);
       const asBidder = await tokenAs(bidderWallet);
-      const bid = {
-        ...defaultBid(currencyAddr, bidderWallet.address, otherWallet.address),
+      const bidData = {
+        ...defaultBidData(currencyAddr, bidderWallet.address, otherWallet.address),
         sellOnFee: Decimal.new(15),
       };
-      await setBid(asBidder, bid, 0);
+      await setBid(asBidder, bidData, 0);
 
       const beforeOwnerBalance = toNumWei(
         await getBalance(currencyAddr, ownerWallet.address)
@@ -924,6 +997,7 @@ describe('Media', () => {
       const beforeCreatorBalance = toNumWei(
         await getBalance(currencyAddr, creatorWallet.address)
       );
+      const bid = await auction.bidForTokenBidder(0, bidderWallet.address);
       await expect(token.acceptBid(0, bid)).fulfilled;
       const newOwner = await token.ownerOf(0);
       const afterOwnerBalance = toNumWei(
@@ -950,9 +1024,10 @@ describe('Media', () => {
       const asBidder = await tokenAs(bidderWallet);
       const token = await tokenAs(ownerWallet);
       const auction = await MarketFactory.connect(auctionAddress, bidderWallet);
-      const bid = defaultBid(currencyAddr, bidderWallet.address);
+      const bidData = defaultBidData(currencyAddr, bidderWallet.address);
       const block = await provider.getBlockNumber();
-      await setBid(asBidder, bid, 0);
+      await setBid(asBidder, bidData, 0);
+      const bid = await auction.bidForTokenBidder(0, bidderWallet.address);
       await token.acceptBid(0, bid);
       const events = await auction.queryFilter(
         auction.filters.BidFinalized(null, null),
@@ -960,8 +1035,9 @@ describe('Media', () => {
       );
       expect(events.length).eq(1);
       const logDescription = auction.interface.parseLog(events[0]);
+      expect(toNumWei(logDescription.args.bid.id)).to.eq(toNumWei(bid.id));
       expect(toNumWei(logDescription.args.tokenId)).to.eq(0);
-      expect(toNumWei(logDescription.args.bid.amount)).to.eq(bid.amount);
+      expect(toNumWei(logDescription.args.bid.amount)).to.eq(toNumWei(bid.amount));
       expect(logDescription.args.bid.currency).to.eq(bid.currency);
       expect(toNumWei(logDescription.args.bid.sellOnFee.value)).to.eq(
         toNumWei(bid.sellOnFee.value)
@@ -987,12 +1063,13 @@ describe('Media', () => {
     it('should revert if an invalid bid is accepted', async () => {
       const token = await tokenAs(ownerWallet);
       const asBidder = await tokenAs(bidderWallet);
-      const bid = {
-        ...defaultBid(currencyAddr, bidderWallet.address),
+      const bidData = {
+        ...defaultBidData(currencyAddr, bidderWallet.address),
         amount: 99,
       };
-      await setBid(asBidder, bid, 0);
+      await setBid(asBidder, bidData, 0);
 
+      const bid = await MarketFactory.connect(auctionAddress, bidderWallet).bidForTokenBidder(0, bidderWallet.address);
       await expect(token.acceptBid(0, bid)).rejectedWith(
         'Market: Bid invalid for share splitting'
       );

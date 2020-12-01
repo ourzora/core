@@ -11,6 +11,7 @@ import { formatUnits } from '@ethersproject/units';
 import { AddressZero, MaxUint256 } from '@ethersproject/constants';
 import { BaseErc20Factory } from '../typechain/BaseErc20Factory';
 import { Market } from '../typechain/Market';
+import { toNumWei } from './utils';
 
 chai.use(asPromised);
 
@@ -470,6 +471,7 @@ describe('Market', () => {
 
       expect(events.length).eq(1);
       const logDescription = auction.interface.parseLog(events[0]);
+      expect(toNumWei(logDescription.args.bid.id)).to.eq(0);
       expect(toNumWei(logDescription.args.tokenId)).to.eq(defaultTokenId);
       expect(toNumWei(logDescription.args.bid.amount)).to.eq(defaultBid.amount);
       expect(logDescription.args.bid.currency).to.eq(defaultBid.currency);
