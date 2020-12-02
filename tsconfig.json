@@ -5,14 +5,14 @@
     "strict": false,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "outDir": "dist"
+    "outDir": "dist",
+    "declaration": true,
+    "resolveJsonModule": true
   },
   "include": [
-    "./scripts",
-    "./test",
     "./typechain",
     "./addresses",
-    "./scripts",
-    "./utils"
+    "./utils",
+    "index.ts"
   ]
 }

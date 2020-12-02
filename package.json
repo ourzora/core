@@ -3,14 +3,16 @@
   "version": "1.0.0-rc4",
   "type": "module",
   "private": false,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "dev": "next dev",
     "deploy": "ts-node scripts/deploy.ts",
-    "build": "yarn build:contracts",
+    "build": "yarn build:contracts && yarn build:package",
     "test": "hardhat test",
     "compile": "hardhat clean && hardhat compile",
     "typechain": "rm -rf ./typechain && typechain --show-stack-traces --target ethers-v5 --outDir ./typechain 'artifacts/!(build-info)/**/!(*.dbg*)*.json'",
     "build:contracts": "yarn compile && yarn typechain",
+    "build:package": "tsc && mv typechain/*.d.ts dist/typechain",
     "chain": "ganache-cli --networkId 50 --accounts 20 -e 10000000000 -l 10000000 -m 'concert load couple harbor equip island argue ramp clarify fence smart topic'",
     "watch": "ts-node scripts/watch.ts"
   },
@@ -26,10 +28,7 @@
     "hardhat": "^2.0.2",
     "hardhat-deploy": "^0.7.0-beta.25",
     "hardhat-typechain": "^0.3.3",
-    "next": "9.5.5",
     "prettier-plugin-solidity": "^1.0.0-alpha.60",
-    "react": "17.0.0",
-    "react-dom": "17.0.0",
     "ts-generator": "^0.1.1"
   },
   "devDependencies": {
