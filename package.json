@@ -1,6 +1,6 @@
 {
   "name": "@zoralabs/media",
-  "version": "1.0.0-rc4",
+  "version": "1.0.0-rc5",
   "type": "module",
   "private": false,
   "main": "dist/index.js",
@@ -8,6 +8,7 @@
   "scripts": {
     "deploy": "ts-node scripts/deploy.ts",
     "build": "yarn build:contracts && yarn build:package",
+    "prepublishOnly": "yarn build",
     "test": "hardhat test",
     "compile": "hardhat clean && hardhat compile",
     "typechain": "rm -rf ./typechain && typechain --show-stack-traces --target ethers-v5 --outDir ./typechain 'artifacts/!(build-info)/**/!(*.dbg*)*.json'",
