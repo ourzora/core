@@ -1,7 +1,6 @@
 {
   "name": "@zoralabs/media",
   "version": "1.0.0-rc6",
-  "type": "module",
   "private": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
