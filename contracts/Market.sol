@@ -30,7 +30,7 @@ contract Market {
         // Address of the recipient
         address recipient;
         // % of the next sale to award the previous owner
-        Decimal.D256 sellOnFee;
+        Decimal.D256 sellOnShare;
     }
 
     struct Ask {
@@ -39,7 +39,7 @@ contract Market {
         // Address to the ERC20 token being asked
         address currency;
         // % of the next sale to award the previous owner
-        Decimal.D256 sellOnFee;
+        Decimal.D256 sellOnShare;
     }
 
     struct BidShares {
@@ -243,7 +243,7 @@ contract Market {
         uint256 hundredPercent = uint256(100).mul(Decimal.BASE);
         BidShares memory bidShares = _bidShares[tokenId];
         require(
-            bidShares.creator.value.add(ask.sellOnFee.value) <=
+            bidShares.creator.value.add(ask.sellOnShare.value) <=
                 uint256(100).mul(Decimal.BASE),
             "Market: invalid sell on fee"
         );
@@ -273,7 +273,7 @@ contract Market {
     {
         BidShares memory bidShares = _bidShares[tokenId];
         require(
-            bidShares.creator.value.add(bid.sellOnFee.value) <=
+            bidShares.creator.value.add(bid.sellOnShare.value) <=
                 uint256(100).mul(Decimal.BASE),
             "Market: Sell on fee invalid for share splitting"
         );
@@ -300,7 +300,7 @@ contract Market {
             bid.currency,
             bid.bidder,
             bid.recipient,
-            bid.sellOnFee
+            bid.sellOnShare
         );
         emit BidCreated(tokenId, bid);
 
@@ -310,7 +310,7 @@ contract Market {
             _tokenAsks[tokenId].currency != address(0) &&
             bid.currency == _tokenAsks[tokenId].currency &&
             bid.amount >= _tokenAsks[tokenId].amount &&
-            bid.sellOnFee.value >= _tokenAsks[tokenId].sellOnFee.value
+            bid.sellOnShare.value >= _tokenAsks[tokenId].sellOnShare.value
         ) {
             // Finalize exchange
             _finalizeNFTTransfer(tokenId, bid.bidder);
@@ -353,7 +353,7 @@ contract Market {
         require(
             bid.amount == expectedBid.amount &&
                 bid.currency == expectedBid.currency &&
-                bid.sellOnFee.value == expectedBid.sellOnFee.value &&
+                bid.sellOnShare.value == expectedBid.sellOnShare.value &&
                 bid.recipient == expectedBid.recipient,
             "Market: Unexpected bid found."
         );
@@ -396,15 +396,15 @@ contract Market {
         Media(mediaContract).auctionTransfer(tokenId, bid.recipient);
 
         // Calculate the bid share for the new owner,
-        // equal to 100 - creatorShare - sellOnFee
+        // equal to 100 - creatorShare - sellOnShare
         bidShares.owner = Decimal.D256(
             uint256(100)
                 .mul(Decimal.BASE)
                 .sub(_bidShares[tokenId].creator.value)
-                .sub(bid.sellOnFee.value)
+                .sub(bid.sellOnShare.value)
         );
         // Set the previous owner share to the accepted bid's sell-on fee
-        bidShares.prevOwner = bid.sellOnFee;
+        bidShares.prevOwner = bid.sellOnShare;
 
         // Remove the accepted bid
         delete _tokenBidders[tokenId][bidder];

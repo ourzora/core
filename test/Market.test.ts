@@ -28,7 +28,7 @@ type BidShares = {
 type Ask = {
   currency: string;
   amount: BigNumberish;
-  sellOnFee: { value: BigNumberish };
+  sellOnShare: { value: BigNumberish };
 };
 
 type Bid = {
@@ -36,7 +36,7 @@ type Bid = {
   amount: BigNumberish;
   bidder: string;
   recipient: string;
-  sellOnFee: { value: BigNumberish };
+  sellOnShare: { value: BigNumberish };
 };
 
 describe('Market', () => {
@@ -57,7 +57,7 @@ describe('Market', () => {
   let defaultAsk = {
     amount: 100,
     currency: '0x41A322b28D0fF354040e2CbC676F0320d8c8850d',
-    sellOnFee: Decimal.new(0),
+    sellOnShare: Decimal.new(0),
   };
 
   let auctionAddress: string;
@@ -289,8 +289,8 @@ describe('Market', () => {
       expect(toNumWei(logDescription.args.tokenId)).to.eq(defaultTokenId);
       expect(toNumWei(logDescription.args.ask.amount)).to.eq(defaultAsk.amount);
       expect(logDescription.args.ask.currency).to.eq(defaultAsk.currency);
-      expect(toNumWei(logDescription.args.ask.sellOnFee)).to.eq(
-        toNumWei(defaultAsk.sellOnFee.value)
+      expect(toNumWei(logDescription.args.ask.sellOnShare)).to.eq(
+        toNumWei(defaultAsk.sellOnShare.value)
       );
     });
 
@@ -302,7 +302,7 @@ describe('Market', () => {
         setAsk(auction, defaultTokenId, {
           amount: 1,
           currency: AddressZero,
-          sellOnFee: Decimal.new(0),
+          sellOnShare: Decimal.new(0),
         })
       ).rejectedWith('Market: Ask invalid for share splitting');
     });
@@ -323,7 +323,7 @@ describe('Market', () => {
       bidder: bidderWallet.address,
       recipient: otherWallet.address,
       spender: bidderWallet.address,
-      sellOnFee: Decimal.new(10),
+      sellOnShare: Decimal.new(10),
     };
 
     beforeEach(async () => {
@@ -400,7 +400,7 @@ describe('Market', () => {
         bidder: bidderWallet.address,
         recipient: otherWallet.address,
         spender: bidderWallet.address,
-        sellOnFee: Decimal.new(10),
+        sellOnShare: Decimal.new(10),
       };
 
       await mintCurrency(
@@ -473,8 +473,8 @@ describe('Market', () => {
       expect(toNumWei(logDescription.args.tokenId)).to.eq(defaultTokenId);
       expect(toNumWei(logDescription.args.bid.amount)).to.eq(defaultBid.amount);
       expect(logDescription.args.bid.currency).to.eq(defaultBid.currency);
-      expect(toNumWei(logDescription.args.bid.sellOnFee.value)).to.eq(
-        toNumWei(defaultBid.sellOnFee.value)
+      expect(toNumWei(logDescription.args.bid.sellOnShare.value)).to.eq(
+        toNumWei(defaultBid.sellOnShare.value)
       );
     });
   });

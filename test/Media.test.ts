@@ -65,7 +65,7 @@ type MediaData = {
 type Ask = {
   currency: string;
   amount: BigNumberish;
-  sellOnFee: { value: BigNumberish };
+  sellOnShare: { value: BigNumberish };
 };
 
 type Bid = {
@@ -73,7 +73,7 @@ type Bid = {
   amount: BigNumberish;
   bidder: string;
   recipient: string;
-  sellOnFee: { value: BigNumberish };
+  sellOnShare: { value: BigNumberish };
 };
 
 describe('Media', () => {
@@ -97,7 +97,7 @@ describe('Media', () => {
   let defaultAsk = {
     amount: 100,
     currency: '0x41A322b28D0fF354040e2CbC676F0320d8c8850d',
-    sellOnFee: Decimal.new(0),
+    sellOnShare: Decimal.new(0),
   };
   const defaultBid = (
     currency: string,
@@ -108,7 +108,7 @@ describe('Media', () => {
     currency,
     bidder,
     recipient: recipient || bidder,
-    sellOnFee: Decimal.new(10),
+    sellOnShare: Decimal.new(10),
   });
 
   let auctionAddress: string;
@@ -685,7 +685,7 @@ describe('Media', () => {
     it('should reject if the ask amount is larger than (100 - creatorShare)', async () => {
       const token = await tokenAs(ownerWallet);
       await expect(
-        setAsk(token, 0, { ...defaultAsk, sellOnFee: Decimal.new(91) })
+        setAsk(token, 0, { ...defaultAsk, sellOnShare: Decimal.new(91) })
       ).rejectedWith('Market: invalid sell on fee');
     });
   });
@@ -703,7 +703,7 @@ describe('Media', () => {
       const ask = await market.currentAskForToken(0);
       expect(toNumWei(ask.amount)).eq(0);
       expect(ask.currency).eq(AddressZero);
-      expect(toNumWei(ask.sellOnFee.value)).eq(0);
+      expect(toNumWei(ask.sellOnShare.value)).eq(0);
     });
 
     it('should emit an Ask Removed event', async () => {
@@ -725,8 +725,8 @@ describe('Media', () => {
       expect(toNumWei(logDescription.args.tokenId)).to.eq(0);
       expect(toNumWei(logDescription.args.ask.amount)).to.eq(defaultAsk.amount);
       expect(logDescription.args.ask.currency).to.eq(defaultAsk.currency);
-      expect(toNumWei(logDescription.args.ask.sellOnFee.value)).to.eq(
-        toNumWei(defaultAsk.sellOnFee.value)
+      expect(toNumWei(logDescription.args.ask.sellOnShare.value)).to.eq(
+        toNumWei(defaultAsk.sellOnShare.value)
       );
     });
 
@@ -795,14 +795,14 @@ describe('Media', () => {
       await expect(token.ownerOf(1)).eventually.eq(bidderWallet.address);
     });
 
-    it('should not automatically transfer the token if the ask sellOnFee is higher than the bid', async () => {
+    it('should not automatically transfer the token if the ask sellOnShare is higher than the bid', async () => {
       const token = await tokenAs(bidderWallet);
       const asOwner = await tokenAs(ownerWallet);
       await setupAuction(currencyAddr, 1);
       await setAsk(asOwner, 1, {
         ...defaultAsk,
         currency: currencyAddr,
-        sellOnFee: Decimal.new(60),
+        sellOnShare: Decimal.new(60),
       });
 
       await expect(
@@ -826,7 +826,7 @@ describe('Media', () => {
           amount: 200,
           bidder: bidderWallet.address,
           recipient: otherWallet.address,
-          sellOnFee: Decimal.new(10),
+          sellOnShare: Decimal.new(10),
         },
         1
       );
@@ -916,7 +916,7 @@ describe('Media', () => {
       const asBidder = await tokenAs(bidderWallet);
       const bid = {
         ...defaultBid(currencyAddr, bidderWallet.address, otherWallet.address),
-        sellOnFee: Decimal.new(15),
+        sellOnShare: Decimal.new(15),
       };
       await setBid(asBidder, bid, 0);
 
@@ -968,8 +968,8 @@ describe('Media', () => {
       expect(toNumWei(logDescription.args.tokenId)).to.eq(0);
       expect(toNumWei(logDescription.args.bid.amount)).to.eq(bid.amount);
       expect(logDescription.args.bid.currency).to.eq(bid.currency);
-      expect(toNumWei(logDescription.args.bid.sellOnFee.value)).to.eq(
-        toNumWei(bid.sellOnFee.value)
+      expect(toNumWei(logDescription.args.bid.sellOnShare.value)).to.eq(
+        toNumWei(bid.sellOnShare.value)
       );
       expect(logDescription.args.bid.bidder).to.eq(bid.bidder);
     });
@@ -1025,7 +1025,7 @@ describe('Media', () => {
       const ask = await auction.currentAskForToken(0);
       await expect(toNumWei(ask.amount)).eq(0);
       await expect(ask.currency).eq(AddressZero);
-      await expect(toNumWei(ask.sellOnFee.value)).eq(0);
+      await expect(toNumWei(ask.sellOnShare.value)).eq(0);
     });
   });
 
