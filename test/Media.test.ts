@@ -717,12 +717,17 @@ describe('Media', () => {
       const tx = await removeAsk(token, 0);
 
       const events = await auction.queryFilter(
-        auction.filters.AskRemoved(0),
+        auction.filters.AskRemoved(0, null),
         block
       );
       expect(events.length).eq(1);
       const logDescription = auction.interface.parseLog(events[0]);
       expect(toNumWei(logDescription.args.tokenId)).to.eq(0);
+      expect(toNumWei(logDescription.args.ask.amount)).to.eq(defaultAsk.amount);
+      expect(logDescription.args.ask.currency).to.eq(defaultAsk.currency);
+      expect(toNumWei(logDescription.args.ask.sellOnFee.value)).to.eq(
+        toNumWei(defaultAsk.sellOnFee.value)
+      );
     });
 
     it('should not be callable by anyone that is not owner or approved', async () => {

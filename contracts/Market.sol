@@ -59,7 +59,7 @@ contract Market {
     event BidRemoved(uint256 indexed tokenId, Bid bid);
     event BidFinalized(uint256 indexed tokenId, Bid bid);
     event AskCreated(uint256 indexed tokenId, Ask ask);
-    event AskRemoved(uint256 indexed tokenId);
+    event AskRemoved(uint256 indexed tokenId, Ask ask);
     event BidShareUpdated(uint256 indexed tokenId, BidShares bidShares);
 
     /* *******
@@ -253,8 +253,8 @@ contract Market {
     }
 
     function removeAsk(uint256 tokenId) public onlyMediaCaller {
+        emit AskRemoved(tokenId, _tokenAsks[tokenId]);
         delete _tokenAsks[tokenId];
-        emit AskRemoved(tokenId);
     }
 
     /**
@@ -406,8 +406,7 @@ contract Market {
         // Set the previous owner share to the accepted bid's sell-on fee
         bidShares.prevOwner = bid.sellOnFee;
 
-        // Remove the accepted bid and the ask for the media
-        delete _tokenAsks[tokenId];
+        // Remove the accepted bid
         delete _tokenBidders[tokenId][bidder];
 
         emit BidFinalized(tokenId, bid);
