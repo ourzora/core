@@ -532,9 +532,9 @@ contract Media is ERC721Burnable, ReentrancyGuard {
         address to,
         uint256 tokenId
     ) internal override {
-        super._transfer(from, to, tokenId);
-
         Market(marketContract).removeAsk(tokenId);
+
+        super._transfer(from, to, tokenId);
     }
 
     /**
