@@ -183,6 +183,18 @@ out of scope. However, in the event that the URIs that point to the data must be
 Recall that when minting tokens, sha256 hashes of the content and metadata are provided for integrity checks. As a result, anyone is able to
 check the integrity of the media if the URIs change.
 
+This protocol deviates from the ERC-721 in that the `tokenURI` does **not** point to a valid ERC721 Metadata JSON Schema as defined in the EIP.
+In order to support integrity checks when updating the tokenURIs, the content and metadata of a piece of media are split into `tokenURI` and `metadataURI`,
+respectively. This split effectively allows for the reconfiguration of the URIs of both the content and metadata, while preserving integrity checks.
+
+#### Metadata JSON schema
+
+In order to enable anyone to use this protocol as they see fit, there is no single metadata JSON schema that is used for this protocol.
+However, it is strongly recommended that developers submit a valid [JSON schema](https://json-schema.org/) to the
+[Media Metadata Schemas Repository](https://github.com/ourzora/media-metadata-schemas) to allow anyone to support custom metadata.
+The only **required** key of the JSON metadata is `version`, which is a string in the format of `<name-calVersion>` (e.g. `zora-20210101`).
+This key can be used by implementing platforms to determine which metadata schemas to support.
+
 ### Permit
 
 In order to provide support for third parties to interact with this protocol on a user's behalf, the EIP-712 standard for signing typed data structures is supported.
