@@ -13,27 +13,11 @@ import {
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Decimal} from "./Decimal.sol";
 import {Market} from "./Market.sol";
+import "./interfaces/IMedia.sol";
 
-contract Media is ERC721Burnable, ReentrancyGuard {
+contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     using Counters for Counters.Counter;
     using SafeMath for uint256;
-
-    struct EIP712Signature {
-        uint256 deadline;
-        uint8 v;
-        bytes32 r;
-        bytes32 s;
-    }
-    struct MediaData {
-        // A valid URI of the content represented by this token
-        string tokenURI;
-        // A valid URI of the metadata associated with this token
-        string metadataURI;
-        // A SHA256 hash of the content pointed to by tokenURI
-        bytes32 contentHash;
-        // A SHA256 hash of the content pointed to by metadataURI
-        bytes32 metadataHash;
-    }
 
     /* *******
      * Events
@@ -217,8 +201,9 @@ contract Media is ERC721Burnable, ReentrancyGuard {
      * @dev Return the metadata URI for a piece of media given the token URI
      */
     function tokenMetadataURI(uint256 tokenId)
-        public
+        external
         view
+        override
         onlyTokenCreated(tokenId)
         returns (string memory)
     {
@@ -231,10 +216,11 @@ contract Media is ERC721Burnable, ReentrancyGuard {
      */
 
     /**
-     * @dev Mint new media for msg.sender.
+     * @dev See IMedia.mint
      */
     function mint(MediaData memory data, Market.BidShares memory bidShares)
         public
+        override
         nonReentrant
         onlyValidURI(data.tokenURI)
         onlyValidURI(data.metadataURI)
@@ -243,7 +229,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
     }
 
     /**
-     * EIP-712 mintWithSig method. Mints new media for a creator given a valid signature.
+     * @dev See IMedia.mintWithSig
      */
     function mintWithSig(
         address creator,
@@ -252,6 +238,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
         EIP712Signature memory sig
     )
         public
+        override
         nonReentrant
         onlyValidURI(data.tokenURI)
         onlyValidURI(data.metadataURI)
@@ -292,11 +279,12 @@ contract Media is ERC721Burnable, ReentrancyGuard {
     }
 
     /**
-     * @dev Transfer the token with the given ID to a given address.
-     * Save the previous owner before the transfer, in case there is a sell-on fee.
-     * Note: This can only be called by the auction contract specified at deployment
+     * @dev See IMedia.auctionTransfer
      */
-    function auctionTransfer(uint256 tokenId, address recipient) public {
+    function auctionTransfer(uint256 tokenId, address recipient)
+        external
+        override
+    {
         require(msg.sender == marketContract, "Media: only market contract");
         previousTokenOwners[tokenId] = ownerOf(tokenId);
         _safeTransfer(ownerOf(tokenId), recipient, tokenId, "");
@@ -304,6 +292,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
 
     function setAsk(uint256 tokenId, Market.Ask memory ask)
         public
+        override
         nonReentrant
         onlyApprovedOrOwner(msg.sender, tokenId)
     {
@@ -311,7 +300,8 @@ contract Media is ERC721Burnable, ReentrancyGuard {
     }
 
     function removeAsk(uint256 tokenId)
-        public
+        external
+        override
         nonReentrant
         onlyApprovedOrOwner(msg.sender, tokenId)
     {
@@ -320,6 +310,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
 
     function setBid(uint256 tokenId, Market.Bid memory bid)
         public
+        override
         nonReentrant
         onlyExistingToken(tokenId)
     {
@@ -328,7 +319,8 @@ contract Media is ERC721Burnable, ReentrancyGuard {
     }
 
     function removeBid(uint256 tokenId)
-        public
+        external
+        override
         nonReentrant
         onlyTokenCreated(tokenId)
     {
@@ -337,6 +329,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
 
     function acceptBid(uint256 tokenId, Market.Bid memory bid)
         public
+        override
         nonReentrant
         onlyApprovedOrOwner(msg.sender, tokenId)
     {
@@ -369,7 +362,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
      * In instances where a 3rd party is interacting on a user's behalf via `permit`, they should
      * revoke their approval once their task is complete as a best practice.
      */
-    function revokeApproval(uint256 tokenId) public nonReentrant {
+    function revokeApproval(uint256 tokenId) external override nonReentrant {
         require(
             msg.sender == getApproved(tokenId),
             "Media: caller not approved address"
@@ -377,8 +370,9 @@ contract Media is ERC721Burnable, ReentrancyGuard {
         _approve(address(0), tokenId);
     }
 
-    function updateTokenURI(uint256 tokenId, string memory tokenURI)
-        public
+    function updateTokenURI(uint256 tokenId, string calldata tokenURI)
+        external
+        override
         nonReentrant
         onlyApprovedOrOwner(msg.sender, tokenId)
         onlyTokenWithContentHash(tokenId)
@@ -388,8 +382,12 @@ contract Media is ERC721Burnable, ReentrancyGuard {
         emit TokenURIUpdated(tokenId, msg.sender, tokenURI);
     }
 
-    function updateTokenMetadataURI(uint256 tokenId, string memory metadataURI)
-        public
+    function updateTokenMetadataURI(
+        uint256 tokenId,
+        string calldata metadataURI
+    )
+        external
+        override
         nonReentrant
         onlyApprovedOrOwner(msg.sender, tokenId)
         onlyTokenWithMetadataHash(tokenId)
@@ -408,7 +406,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
         address spender,
         uint256 tokenId,
         EIP712Signature memory sig
-    ) public nonReentrant onlyExistingToken(tokenId) {
+    ) public override nonReentrant onlyExistingToken(tokenId) {
         require(
             sig.deadline == 0 || sig.deadline >= block.timestamp,
             "Media: Permit expired"
