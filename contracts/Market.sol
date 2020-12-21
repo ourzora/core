@@ -38,8 +38,6 @@ contract Market {
         uint256 amount;
         // Address to the ERC20 token being asked
         address currency;
-        // % of the next sale to award the previous owner
-        Decimal.D256 sellOnShare;
     }
 
     struct BidShares {
@@ -241,12 +239,6 @@ contract Market {
         );
 
         uint256 hundredPercent = uint256(100).mul(Decimal.BASE);
-        BidShares memory bidShares = _bidShares[tokenId];
-        require(
-            bidShares.creator.value.add(ask.sellOnShare.value) <=
-                uint256(100).mul(Decimal.BASE),
-            "Market: invalid sell on fee"
-        );
 
         _tokenAsks[tokenId] = ask;
         emit AskCreated(tokenId, ask);
@@ -309,8 +301,7 @@ contract Market {
         if (
             _tokenAsks[tokenId].currency != address(0) &&
             bid.currency == _tokenAsks[tokenId].currency &&
-            bid.amount >= _tokenAsks[tokenId].amount &&
-            bid.sellOnShare.value >= _tokenAsks[tokenId].sellOnShare.value
+            bid.amount >= _tokenAsks[tokenId].amount
         ) {
             // Finalize exchange
             _finalizeNFTTransfer(tokenId, bid.bidder);

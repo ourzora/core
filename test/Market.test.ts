@@ -28,7 +28,6 @@ type BidShares = {
 type Ask = {
   currency: string;
   amount: BigNumberish;
-  sellOnShare: { value: BigNumberish };
 };
 
 type Bid = {
@@ -289,9 +288,6 @@ describe('Market', () => {
       expect(toNumWei(logDescription.args.tokenId)).to.eq(defaultTokenId);
       expect(toNumWei(logDescription.args.ask.amount)).to.eq(defaultAsk.amount);
       expect(logDescription.args.ask.currency).to.eq(defaultAsk.currency);
-      expect(toNumWei(logDescription.args.ask.sellOnShare)).to.eq(
-        toNumWei(defaultAsk.sellOnShare.value)
-      );
     });
 
     it('should reject if the ask is too low', async () => {
@@ -302,7 +298,6 @@ describe('Market', () => {
         setAsk(auction, defaultTokenId, {
           amount: 1,
           currency: AddressZero,
-          sellOnShare: Decimal.new(0),
         })
       ).rejectedWith('Market: Ask invalid for share splitting');
     });

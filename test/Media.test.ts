@@ -65,7 +65,6 @@ type MediaData = {
 type Ask = {
   currency: string;
   amount: BigNumberish;
-  sellOnShare: { value: BigNumberish };
 };
 
 type Bid = {
@@ -681,13 +680,6 @@ describe('Media', () => {
         setAsk(token, 0, { ...defaultAsk, amount: 101 })
       ).rejectedWith('Market: Ask invalid for share splitting');
     });
-
-    it('should reject if the ask amount is larger than (100 - creatorShare)', async () => {
-      const token = await tokenAs(ownerWallet);
-      await expect(
-        setAsk(token, 0, { ...defaultAsk, sellOnShare: Decimal.new(91) })
-      ).rejectedWith('Market: invalid sell on fee');
-    });
   });
 
   describe('#removeAsk', () => {
@@ -703,7 +695,6 @@ describe('Media', () => {
       const ask = await market.currentAskForToken(0);
       expect(toNumWei(ask.amount)).eq(0);
       expect(ask.currency).eq(AddressZero);
-      expect(toNumWei(ask.sellOnShare.value)).eq(0);
     });
 
     it('should emit an Ask Removed event', async () => {
@@ -725,9 +716,6 @@ describe('Media', () => {
       expect(toNumWei(logDescription.args.tokenId)).to.eq(0);
       expect(toNumWei(logDescription.args.ask.amount)).to.eq(defaultAsk.amount);
       expect(logDescription.args.ask.currency).to.eq(defaultAsk.currency);
-      expect(toNumWei(logDescription.args.ask.sellOnShare.value)).to.eq(
-        toNumWei(defaultAsk.sellOnShare.value)
-      );
     });
 
     it('should not be callable by anyone that is not owner or approved', async () => {
@@ -793,23 +781,6 @@ describe('Media', () => {
       ).fulfilled;
 
       await expect(token.ownerOf(1)).eventually.eq(bidderWallet.address);
-    });
-
-    it('should not automatically transfer the token if the ask sellOnShare is higher than the bid', async () => {
-      const token = await tokenAs(bidderWallet);
-      const asOwner = await tokenAs(ownerWallet);
-      await setupAuction(currencyAddr, 1);
-      await setAsk(asOwner, 1, {
-        ...defaultAsk,
-        currency: currencyAddr,
-        sellOnShare: Decimal.new(60),
-      });
-
-      await expect(
-        token.setBid(1, defaultBid(currencyAddr, bidderWallet.address))
-      ).fulfilled;
-
-      await expect(token.ownerOf(1)).eventually.eq(ownerWallet.address);
     });
 
     it('should refund a bid if one already exists for the bidder', async () => {
@@ -1025,7 +996,6 @@ describe('Media', () => {
       const ask = await auction.currentAskForToken(0);
       await expect(toNumWei(ask.amount)).eq(0);
       await expect(ask.currency).eq(AddressZero);
-      await expect(toNumWei(ask.sellOnShare.value)).eq(0);
     });
   });
 
