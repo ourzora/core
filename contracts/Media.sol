@@ -235,6 +235,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
      */
     function mint(MediaData memory data, Market.BidShares memory bidShares)
         public
+        nonReentrant
         onlyValidURI(data.tokenURI)
         onlyValidURI(data.metadataURI)
     {
@@ -249,7 +250,12 @@ contract Media is ERC721Burnable, ReentrancyGuard {
         MediaData memory data,
         Market.BidShares memory bidShares,
         EIP712Signature memory sig
-    ) public onlyValidURI(data.tokenURI) onlyValidURI(data.metadataURI) {
+    )
+        public
+        nonReentrant
+        onlyValidURI(data.tokenURI)
+        onlyValidURI(data.metadataURI)
+    {
         require(
             sig.deadline == 0 || sig.deadline >= block.timestamp,
             "Media: mintWithSig expired"
@@ -298,6 +304,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
 
     function setAsk(uint256 tokenId, Market.Ask memory ask)
         public
+        nonReentrant
         onlyApprovedOrOwner(msg.sender, tokenId)
     {
         Market(marketContract).setAsk(tokenId, ask);
@@ -305,6 +312,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
 
     function removeAsk(uint256 tokenId)
         public
+        nonReentrant
         onlyApprovedOrOwner(msg.sender, tokenId)
     {
         Market(marketContract).removeAsk(tokenId);
@@ -329,6 +337,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
 
     function acceptBid(uint256 tokenId, Market.Bid memory bid)
         public
+        nonReentrant
         onlyApprovedOrOwner(msg.sender, tokenId)
     {
         Market(marketContract).acceptBid(tokenId, bid);
@@ -340,6 +349,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
     function burn(uint256 tokenId)
         public
         override
+        nonReentrant
         onlyExistingToken(tokenId)
         onlyApprovedOrOwner(msg.sender, tokenId)
     {
@@ -359,7 +369,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
      * In instances where a 3rd party is interacting on a user's behalf via `permit`, they should
      * revoke their approval once their task is complete as a best practice.
      */
-    function revokeApproval(uint256 tokenId) public {
+    function revokeApproval(uint256 tokenId) public nonReentrant {
         require(
             msg.sender == getApproved(tokenId),
             "Media: caller not approved address"
@@ -369,6 +379,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
 
     function updateTokenURI(uint256 tokenId, string memory tokenURI)
         public
+        nonReentrant
         onlyApprovedOrOwner(msg.sender, tokenId)
         onlyTokenWithContentHash(tokenId)
         onlyValidURI(tokenURI)
@@ -379,6 +390,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
 
     function updateTokenMetadataURI(uint256 tokenId, string memory metadataURI)
         public
+        nonReentrant
         onlyApprovedOrOwner(msg.sender, tokenId)
         onlyTokenWithMetadataHash(tokenId)
         onlyValidURI(metadataURI)
@@ -396,7 +408,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
         address spender,
         uint256 tokenId,
         EIP712Signature memory sig
-    ) public onlyExistingToken(tokenId) {
+    ) public nonReentrant onlyExistingToken(tokenId) {
         require(
             sig.deadline == 0 || sig.deadline >= block.timestamp,
             "Media: Permit expired"
