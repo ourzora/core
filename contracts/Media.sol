@@ -156,7 +156,7 @@ contract Media is ERC721Burnable, ReentrancyGuard {
      */
     modifier onlyTokenCreated(uint256 tokenId) {
         require(
-            _tokenIdTracker.current() >= tokenId,
+            _tokenIdTracker.current() > tokenId,
             "Media: token with that id does not exist"
         );
         _;
