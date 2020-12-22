@@ -12,6 +12,10 @@ import {Decimal} from "./Decimal.sol";
 import {Media} from "./Media.sol";
 import {IMarket} from "./interfaces/IMarket.sol";
 
+/**
+ * @title A Market for pieces of media
+ * @notice This contract contains all of the market logic for Media
+ */
 contract Market is IMarket {
     using Counters for Counters.Counter;
     using SafeMath for uint256;
@@ -42,7 +46,7 @@ contract Market is IMarket {
      */
 
     /**
-     * @dev given an address for an ERC-20 contract, revert if the spender does not have
+     * @notice given an address for an ERC-20 contract, revert if the spender does not have
      * a large enough balance for the amount or has not given approval for this contract to
      * transfer funds
      */
@@ -64,7 +68,7 @@ contract Market is IMarket {
     }
 
     /**
-     * @dev require that the msg.sender is the configured media contract
+     * @notice require that the msg.sender is the configured media contract
      */
     modifier onlyMediaCaller() {
         require(mediaContract == msg.sender, "Market: Only media contract");
@@ -103,7 +107,7 @@ contract Market is IMarket {
     }
 
     /**
-     * @dev Validates that the bid is valid by ensuring that the bid amount can be split perfectly into all the bid shares.
+     * @notice Validates that the bid is valid by ensuring that the bid amount can be split perfectly into all the bid shares.
      *  We do this by comparing the sum of the individual share values with the amount and ensuring they are equal. Because
      *  the splitShare function uses integer division, any inconsistencies with the original and split sums would be due to
      *  a bid splitting that does not perfectly divide the bid amount.
@@ -128,7 +132,7 @@ contract Market is IMarket {
     }
 
     /**
-     * @dev Validates that the provided bid shares sum to 100
+     * @notice Validates that the provided bid shares sum to 100
      */
     function isValidBidShares(BidShares memory bidShares)
         public
@@ -143,7 +147,7 @@ contract Market is IMarket {
     }
 
     /**
-     * @dev return a % of the specified amount. This function is used to split a bid into shares
+     * @notice return a % of the specified amount. This function is used to split a bid into shares
      * for a media's shareholders.
      */
     function splitShare(Decimal.D256 memory sharePercentage, uint256 amount)
@@ -165,7 +169,7 @@ contract Market is IMarket {
     }
 
     /**
-     * @dev Sets the media contract address. This address is the only permitted address that
+     * @notice Sets the media contract address. This address is the only permitted address that
      * can call the mutable functions. This method can only be called once.
      */
     function configure(address mediaContractAddress) external override {
@@ -176,7 +180,7 @@ contract Market is IMarket {
     }
 
     /**
-     * @dev Sets bid shares for a particular tokenId. These bid shares must
+     * @notice Sets bid shares for a particular tokenId. These bid shares must
      * sum to 100.
      */
     function setBidShares(uint256 tokenId, BidShares memory bidShares)
@@ -193,7 +197,7 @@ contract Market is IMarket {
     }
 
     /**
-     * @dev Sets the ask on a particular media. If the ask cannot be evenly split into the media's
+     * @notice Sets the ask on a particular media. If the ask cannot be evenly split into the media's
      * bid shares, this reverts.
      */
     function setAsk(uint256 tokenId, Ask memory ask)
@@ -212,13 +216,16 @@ contract Market is IMarket {
         emit AskCreated(tokenId, ask);
     }
 
+    /**
+     * @notice removes an ask for a token and emits an AskRemoved event
+     */
     function removeAsk(uint256 tokenId) external override onlyMediaCaller {
         emit AskRemoved(tokenId, _tokenAsks[tokenId]);
         delete _tokenAsks[tokenId];
     }
 
     /**
-     * @dev Sets the bid on a particular media for a bidder. The token being used to bid
+     * @notice Sets the bid on a particular media for a bidder. The token being used to bid
      * is transferred from the spender to this contract to be held until removed or accepted.
      * If another bid already exists for the bidder, it is refunded.
      */
@@ -278,7 +285,7 @@ contract Market is IMarket {
     }
 
     /**
-     * @dev Removes the bid on a particular media for a bidder. The bid amount
+     * @notice Removes the bid on a particular media for a bidder. The bid amount
      * is transferred from this contract to the bidder, if they have a bid placed.
      */
     function removeBid(uint256 tokenId, address bidder)
@@ -300,7 +307,7 @@ contract Market is IMarket {
     }
 
     /**
-     * @dev Accepts a bid from a particular bidder. Can only be called by the media contract.
+     * @notice Accepts a bid from a particular bidder. Can only be called by the media contract.
      * See {_finalizeNFTTransfer}
      * Provided bid must match a bid in storage. This is to prevent a race condition
      * where a bid may change while the acceptBid call is in transit.
@@ -331,7 +338,7 @@ contract Market is IMarket {
     }
 
     /**
-     * @dev Given a token ID and a bidder, this method transfers the value of
+     * @notice Given a token ID and a bidder, this method transfers the value of
      * the bid to the shareholders. It also transfers the ownership of the media
      * to the bid recipient. Finally, it removes the accepted bid and the current ask.
      */

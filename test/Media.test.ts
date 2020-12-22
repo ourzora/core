@@ -327,7 +327,7 @@ describe('Media', () => {
             owner: Decimal.new(0),
           }
         )
-      ).rejectedWith('Media: content hash must be non-empty');
+      ).rejectedWith('Media: content hash must be non-zero');
     });
 
     it('should revert if the content hash already exists for a created token', async () => {
@@ -382,7 +382,7 @@ describe('Media', () => {
             owner: Decimal.new(0),
           }
         )
-      ).rejectedWith('Media: metadata hash  must be non-empty');
+      ).rejectedWith('Media: metadata hash must be non-zero');
     });
 
     it('should revert if the tokenURI is empty', async () => {
@@ -1055,9 +1055,7 @@ describe('Media', () => {
     it('should revert if the token id does not exist', async () => {
       const token = await tokenAs(creatorWallet);
 
-      await expect(token.burn(100)).rejectedWith(
-        'ERC721: operator query for nonexistent token'
-      );
+      await expect(token.burn(100)).rejectedWith('Media: nonexistent token');
     });
 
     it('should clear approvals, set remove owner, but maintain tokenURI and contentHash when the owner is creator and caller', async () => {

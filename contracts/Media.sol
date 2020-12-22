@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 
@@ -15,6 +16,11 @@ import {Decimal} from "./Decimal.sol";
 import {IMarket} from "./interfaces/IMarket.sol";
 import "./interfaces/IMedia.sol";
 
+/**
+ * @title A media value system, with perpetual equity to creators
+ * @notice This contract provides an interface to mint media with a market
+ * owned by the creator.
+ */
 contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     using Counters for Counters.Counter;
     using SafeMath for uint256;
@@ -80,7 +86,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
      */
 
     /**
-     * @dev Require that the token has not been burned and has been minted
+     * @notice Require that the token has not been burned and has been minted
      */
     modifier onlyExistingToken(uint256 tokenId) {
         require(_exists(tokenId), "Media: nonexistent token");
@@ -88,7 +94,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     }
 
     /**
-     * @dev Require that the token has had a content hash set
+     * @notice Require that the token has had a content hash set
      */
     modifier onlyTokenWithContentHash(uint256 tokenId) {
         require(
@@ -99,7 +105,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     }
 
     /**
-     * @dev Require that the token has had a metadata hash set
+     * @notice Require that the token has had a metadata hash set
      */
     modifier onlyTokenWithMetadataHash(uint256 tokenId) {
         require(
@@ -110,7 +116,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     }
 
     /**
-     * @dev ensure that the provided spender is the approved or the owner of
+     * @notice Ensure that the provided spender is the approved or the owner of
      * the media for the specified tokenId
      */
     modifier onlyApprovedOrOwner(address spender, uint256 tokenId) {
@@ -122,7 +128,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     }
 
     /**
-     * @dev Ensure the token has been created (even if it has been burned)
+     * @notice Ensure the token has been created (even if it has been burned)
      */
     modifier onlyTokenCreated(uint256 tokenId) {
         require(
@@ -133,7 +139,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     }
 
     /**
-     * @dev Ensure that the provided URI is not empty
+     * @notice Ensure that the provided URI is not empty
      */
     modifier onlyValidURI(string memory uri) {
         require(
@@ -144,7 +150,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     }
 
     /**
-     * @dev On deployment, set the market contract address and register the
+     * @notice On deployment, set the market contract address and register the
      * ERC721 metadata interface
      */
     constructor(address marketContractAddr) public ERC721("Zora", "ZORA") {
@@ -158,10 +164,11 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
      */
 
     /**
-     * @dev return the URI for a particular piece of media with the specified tokenId
-     * Note: This function is an override of the base OZ implementation because we
+     * @notice return the URI for a particular piece of media with the specified tokenId
+     * @dev This function is an override of the base OZ implementation because we
      * will return the tokenURI even if the media has been burned. In addition, this
      * protocol does not support a base URI, so relevant conditionals are removed.
+     * @return the URI for a token
      */
     function tokenURI(uint256 tokenId)
         public
@@ -176,7 +183,8 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     }
 
     /**
-     * @dev Return the metadata URI for a piece of media given the token URI
+     * @notice Return the metadata URI for a piece of media given the token URI
+     * @return the metadata URI for the token
      */
     function tokenMetadataURI(uint256 tokenId)
         external
@@ -194,7 +202,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
      */
 
     /**
-     * @dev See IMedia.mint
+     * @notice see IMedia
      */
     function mint(MediaData memory data, IMarket.BidShares memory bidShares)
         public
@@ -207,7 +215,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     }
 
     /**
-     * @dev See IMedia.mintWithSig
+     * @notice see IMedia
      */
     function mintWithSig(
         address creator,
@@ -257,7 +265,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     }
 
     /**
-     * @dev See IMedia.auctionTransfer
+     * @notice see IMedia
      */
     function auctionTransfer(uint256 tokenId, address recipient)
         external
@@ -268,6 +276,9 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
         _safeTransfer(ownerOf(tokenId), recipient, tokenId, "");
     }
 
+    /**
+     * @notice see IMedia
+     */
     function setAsk(uint256 tokenId, IMarket.Ask memory ask)
         public
         override
@@ -277,6 +288,9 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
         IMarket(marketContract).setAsk(tokenId, ask);
     }
 
+    /**
+     * @notice see IMedia
+     */
     function removeAsk(uint256 tokenId)
         external
         override
@@ -286,6 +300,9 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
         IMarket(marketContract).removeAsk(tokenId);
     }
 
+    /**
+     * @notice see IMedia
+     */
     function setBid(uint256 tokenId, IMarket.Bid memory bid)
         public
         override
@@ -296,6 +313,9 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
         IMarket(marketContract).setBid(tokenId, bid, msg.sender);
     }
 
+    /**
+     * @notice see IMedia
+     */
     function removeBid(uint256 tokenId)
         external
         override
@@ -305,6 +325,9 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
         IMarket(marketContract).removeBid(tokenId, msg.sender);
     }
 
+    /**
+     * @notice see IMedia
+     */
     function acceptBid(uint256 tokenId, IMarket.Bid memory bid)
         public
         override
@@ -315,7 +338,8 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     }
 
     /**
-     * @dev Burn a token. Only callable if the media owner is also the creator.
+     * @notice Burn a token.
+     * @dev Only callable if the media owner is also the creator.
      */
     function burn(uint256 tokenId)
         public
@@ -335,7 +359,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     }
 
     /**
-     * @dev Revoke the approvals for a token. The provided `approve` function is not sufficient
+     * @notice Revoke the approvals for a token. The provided `approve` function is not sufficient
      * for this protocol, as it does not allow an approved address to revoke it's own approval.
      * In instances where a 3rd party is interacting on a user's behalf via `permit`, they should
      * revoke their approval once their task is complete as a best practice.
@@ -348,6 +372,10 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
         _approve(address(0), tokenId);
     }
 
+    /**
+     * @notice see IMedia
+     * @dev only callable by approved or owner
+     */
     function updateTokenURI(uint256 tokenId, string calldata tokenURI)
         external
         override
@@ -360,6 +388,10 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
         emit TokenURIUpdated(tokenId, msg.sender, tokenURI);
     }
 
+    /**
+     * @notice see IMedia
+     * @dev only callable by approved or owner
+     */
     function updateTokenMetadataURI(
         uint256 tokenId,
         string calldata metadataURI
@@ -376,8 +408,8 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     }
 
     /**
-     * @dev EIP-712 permit method. Sets an approved spender given a valid signature.
-     * This method is loosely based on the permit for ERC-20 tokens in  EIP-2612, but modified
+     * @notice See IMedia
+     * @dev This method is loosely based on the permit for ERC-20 tokens in  EIP-2612, but modified
      * for ERC-721.
      */
     function permit(
@@ -426,7 +458,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
      */
 
     /**
-     * @dev Creates a new token for `creator`. Its token ID will be automatically
+     * @notice Creates a new token for `creator`. Its token ID will be automatically
      * assigned (and available on the emitted {IERC721-Transfer} event), and the token
      * URI autogenerated based on the base URI passed at construction.
      *
@@ -496,8 +528,8 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     }
 
     /**
-     * @dev Destroys `tokenId`.
-     * We modify the OZ _burn implementation to
+     * @notice Destroys `tokenId`.
+     * @dev We modify the OZ _burn implementation to
      * maintain metadata and to remove the
      * previous token owner from the piece
      */
@@ -513,6 +545,9 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
         delete previousTokenOwners[tokenId];
     }
 
+    /**
+     * @notice transfer a token and remove the ask for it.
+     */
     function _transfer(
         address from,
         address to,

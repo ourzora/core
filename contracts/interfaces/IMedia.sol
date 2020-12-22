@@ -3,6 +3,9 @@ pragma experimental ABIEncoderV2;
 
 import {IMarket} from "./IMarket.sol";
 
+/**
+ * @title Interface for Zora Protocol's Media
+ */
 interface IMedia {
     struct EIP712Signature {
         uint256 deadline;
@@ -30,7 +33,7 @@ interface IMedia {
     );
 
     /**
-     * @dev Return the metadata URI for a piece of media given the token URI
+     * @notice Return the metadata URI for a piece of media given the token URI
      */
     function tokenMetadataURI(uint256 tokenId)
         external
@@ -38,13 +41,13 @@ interface IMedia {
         returns (string memory);
 
     /**
-     * @dev Mint new media for msg.sender.
+     * @notice Mint new media for msg.sender.
      */
     function mint(MediaData calldata data, IMarket.BidShares calldata bidShares)
         external;
 
     /**
-     * EIP-712 mintWithSig method. Mints new media for a creator given a valid signature.
+     * @notice EIP-712 mintWithSig method. Mints new media for a creator given a valid signature.
      */
     function mintWithSig(
         address creator,
@@ -54,31 +57,55 @@ interface IMedia {
     ) external;
 
     /**
-     * @dev Transfer the token with the given ID to a given address.
+     * @notice Transfer the token with the given ID to a given address.
      * Save the previous owner before the transfer, in case there is a sell-on fee.
-     * Note: This can only be called by the auction contract specified at deployment
+     * @dev This can only be called by the auction contract specified at deployment
      */
     function auctionTransfer(uint256 tokenId, address recipient) external;
 
+    /**
+     * @notice Set the ask on a piece of media
+     */
     function setAsk(uint256 tokenId, IMarket.Ask calldata ask) external;
 
+    /**
+     * @notice Remove the ask on a piece of media
+     */
     function removeAsk(uint256 tokenId) external;
 
+    /**
+     * @notice Set the bid on a piece of media
+     */
     function setBid(uint256 tokenId, IMarket.Bid calldata bid) external;
 
+    /**
+     * @notice Remove the bid on a piece of media
+     */
     function removeBid(uint256 tokenId) external;
 
     function acceptBid(uint256 tokenId, IMarket.Bid calldata bid) external;
 
+    /**
+     * @notice Revoke approval for a piece of media
+     */
     function revokeApproval(uint256 tokenId) external;
 
+    /**
+     * @notice Update the token URI
+     */
     function updateTokenURI(uint256 tokenId, string calldata tokenURI) external;
 
+    /**
+     * @notice Update the token metadata uri
+     */
     function updateTokenMetadataURI(
         uint256 tokenId,
         string calldata metadataURI
     ) external;
 
+    /**
+     * @notice EIP-712 permit method. Sets an approved spender given a valid signature.
+     */
     function permit(
         address spender,
         uint256 tokenId,
