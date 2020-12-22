@@ -300,13 +300,13 @@ contract Market is IMarket {
     }
 
     /**
-     * @dev Accepts a bid from a particular bidder. Can only be called by the token
-     * owner or an approved address. See {_finalizeNFTTransfer}
+     * @dev Accepts a bid from a particular bidder. Can only be called by the media contract.
+     * See {_finalizeNFTTransfer}
      * Provided bid must match a bid in storage. This is to prevent a race condition
      * where a bid may change while the acceptBid call is in transit.
      * A bid cannot be accepted if it cannot be split equally into its shareholders.
-     * This should only revert in rare instances, but is necessary to ensure fairness
-     * to all shareholders.
+     * This should only revert in rare instances (example, a low bid with a zero-decimal token),
+     * but is necessary to ensure fairness to all shareholders.
      */
     function acceptBid(uint256 tokenId, Bid calldata expectedBid)
         external

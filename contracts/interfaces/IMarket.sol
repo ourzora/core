@@ -13,7 +13,7 @@ interface IMarket {
         address bidder;
         // Address of the recipient
         address recipient;
-        // % of the next sale to award the previous owner
+        // % of the next sale to award the current owner
         Decimal.D256 sellOnShare;
     }
 

@@ -39,7 +39,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     // Mapping from token id to sha256 hash of content
     mapping(uint256 => bytes32) public tokenContentHashes;
 
-    // Mapping from token id to sha 256 hash of metadata
+    // Mapping from token id to sha256 hash of metadata
     mapping(uint256 => bytes32) public tokenMetadataHashes;
 
     // Mapping from token id to metadataURI
@@ -83,10 +83,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
      * @dev Require that the token has not been burned and has been minted
      */
     modifier onlyExistingToken(uint256 tokenId) {
-        require(
-            _exists(tokenId),
-            "ERC721: operator query for nonexistent token"
-        );
+        require(_exists(tokenId), "Media: nonexistent token");
         _;
     }
 
@@ -437,7 +434,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
      *
      * On mint, also set the sha256 hashes of the content and its metadata for integrity
      * checks, along with the initial URIs to point to the content and metadata. Attribute
-     * the token ID to the creator, mark the content hash as used, and set tbe bid shares for
+     * the token ID to the creator, mark the content hash as used, and set the bid shares for
      * the media's market.
      *
      * Note that although the content hash must be unique for future mints to prevent duplicate media,
@@ -448,18 +445,16 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
         MediaData memory data,
         IMarket.BidShares memory bidShares
     ) internal onlyValidURI(data.tokenURI) onlyValidURI(data.metadataURI) {
-        require(data.contentHash != 0, "Media: content hash must be non-empty");
+        require(data.contentHash != 0, "Media: content hash must be non-zero");
         require(
             _contentHashes[data.contentHash] == false,
             "Media: a token has already been created with this content hash"
         );
         require(
             data.metadataHash != 0,
-            "Media: metadata hash  must be non-empty"
+            "Media: metadata hash must be non-zero"
         );
 
-        // We cannot just use balanceOf to create the new tokenId because tokens
-        // can be burned (destroyed), so we need a separate counter.
         uint256 tokenId = _tokenIdTracker.current();
 
         _safeMint(creator, tokenId);
