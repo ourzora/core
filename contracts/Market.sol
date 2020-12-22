@@ -10,55 +10,12 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {Decimal} from "./Decimal.sol";
 import {Media} from "./Media.sol";
+import {IMarket} from "./interfaces/IMarket.sol";
 
-contract Market {
+contract Market is IMarket {
     using Counters for Counters.Counter;
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-
-    /* *******
-     * STRUCTS
-     * *******
-     */
-    struct Bid {
-        // Amount of the currency being bid
-        uint256 amount;
-        // Address to the ERC20 token being used to bid
-        address currency;
-        // Address of the bidder
-        address bidder;
-        // Address of the recipient
-        address recipient;
-        // % of the next sale to award the previous owner
-        Decimal.D256 sellOnShare;
-    }
-
-    struct Ask {
-        // Amount of the currency being asked
-        uint256 amount;
-        // Address to the ERC20 token being asked
-        address currency;
-    }
-
-    struct BidShares {
-        // % of sale value that goes to the _previous_ owner of the nft
-        Decimal.D256 prevOwner;
-        // % of sale value that goes to the original creator of the nft
-        Decimal.D256 creator;
-        // % of sale value that goes to the seller (current owner) of the nft
-        Decimal.D256 owner;
-    }
-
-    /* *******
-     * Events
-     * *******
-     */
-    event BidCreated(uint256 indexed tokenId, Bid bid);
-    event BidRemoved(uint256 indexed tokenId, Bid bid);
-    event BidFinalized(uint256 indexed tokenId, Bid bid);
-    event AskCreated(uint256 indexed tokenId, Ask ask);
-    event AskRemoved(uint256 indexed tokenId, Ask ask);
-    event BidShareUpdated(uint256 indexed tokenId, BidShares bidShares);
 
     /* *******
      * Globals
@@ -121,6 +78,7 @@ contract Market {
     function bidForTokenBidder(uint256 tokenId, address bidder)
         external
         view
+        override
         returns (Bid memory)
     {
         return _tokenBidders[tokenId][bidder];
@@ -129,6 +87,7 @@ contract Market {
     function currentAskForToken(uint256 tokenId)
         external
         view
+        override
         returns (Ask memory)
     {
         return _tokenAsks[tokenId];
@@ -137,6 +96,7 @@ contract Market {
     function bidSharesForToken(uint256 tokenId)
         public
         view
+        override
         returns (BidShares memory)
     {
         return _bidShares[tokenId];
@@ -145,12 +105,13 @@ contract Market {
     /**
      * @dev Validates that the bid is valid by ensuring that the bid amount can be split perfectly into all the bid shares.
      *  We do this by comparing the sum of the individual share values with the amount and ensuring they are equal. Because
-     *  the _splitShare function uses integer division, any inconsistencies with the original and split sums would be due to
+     *  the splitShare function uses integer division, any inconsistencies with the original and split sums would be due to
      *  a bid splitting that does not perfectly divide the bid amount.
      */
     function isValidBid(uint256 tokenId, uint256 bidAmount)
         public
         view
+        override
         returns (bool)
     {
         BidShares memory bidShares = bidSharesForToken(tokenId);
@@ -161,9 +122,9 @@ contract Market {
         return
             bidAmount != 0 &&
             (bidAmount ==
-                _splitShare(bidShares.creator, bidAmount)
-                    .add(_splitShare(bidShares.prevOwner, bidAmount))
-                    .add(_splitShare(bidShares.owner, bidAmount)));
+                splitShare(bidShares.creator, bidAmount)
+                    .add(splitShare(bidShares.prevOwner, bidAmount))
+                    .add(splitShare(bidShares.owner, bidAmount)));
     }
 
     /**
@@ -172,6 +133,7 @@ contract Market {
     function isValidBidShares(BidShares memory bidShares)
         public
         pure
+        override
         returns (bool)
     {
         return
@@ -184,9 +146,10 @@ contract Market {
      * @dev return a % of the specified amount. This function is used to split a bid into equal shares
      * for a media's shareholders.
      */
-    function _splitShare(Decimal.D256 memory sharePercentage, uint256 amount)
+    function splitShare(Decimal.D256 memory sharePercentage, uint256 amount)
         public
         pure
+        override
         returns (uint256)
     {
         return Decimal.mul(amount, sharePercentage).div(100);
@@ -205,7 +168,7 @@ contract Market {
      * @dev Sets the media contract address. This address is the only permitted address that
      * can call the mutable functions. This method can only be called once.
      */
-    function configure(address mediaContractAddress) public {
+    function configure(address mediaContractAddress) external override {
         require(msg.sender == _owner, "Market: Only owner");
         require(mediaContract == address(0), "Market: Already configured");
 
@@ -218,6 +181,7 @@ contract Market {
      */
     function setBidShares(uint256 tokenId, BidShares memory bidShares)
         public
+        override
         onlyMediaCaller
     {
         require(
@@ -232,7 +196,11 @@ contract Market {
      * @dev Sets the ask on a particular media. If the ask cannot be evenly split into the media's
      * bid shares, this reverts.
      */
-    function setAsk(uint256 tokenId, Ask memory ask) public onlyMediaCaller {
+    function setAsk(uint256 tokenId, Ask memory ask)
+        public
+        override
+        onlyMediaCaller
+    {
         require(
             isValidBid(tokenId, ask.amount),
             "Market: Ask invalid for share splitting"
@@ -244,7 +212,7 @@ contract Market {
         emit AskCreated(tokenId, ask);
     }
 
-    function removeAsk(uint256 tokenId) public onlyMediaCaller {
+    function removeAsk(uint256 tokenId) external override onlyMediaCaller {
         emit AskRemoved(tokenId, _tokenAsks[tokenId]);
         delete _tokenAsks[tokenId];
     }
@@ -260,6 +228,7 @@ contract Market {
         address spender
     )
         public
+        override
         onlyMediaCaller
         onlyTransferAllowanceAndSolvent(spender, bid.currency, bid.amount)
     {
@@ -312,7 +281,11 @@ contract Market {
      * @dev Removes the bid on a particular media for a bidder. The bid amount
      * is transferred from this contract to the bidder, if they have a bid placed.
      */
-    function removeBid(uint256 tokenId, address bidder) public onlyMediaCaller {
+    function removeBid(uint256 tokenId, address bidder)
+        public
+        override
+        onlyMediaCaller
+    {
         Bid storage bid = _tokenBidders[tokenId][bidder];
         uint256 bidAmount = bid.amount;
         address bidCurrency = bid.currency;
@@ -337,6 +310,7 @@ contract Market {
      */
     function acceptBid(uint256 tokenId, Bid calldata expectedBid)
         external
+        override
         onlyMediaCaller
     {
         Bid memory bid = _tokenBidders[tokenId][expectedBid.bidder];
@@ -370,17 +344,17 @@ contract Market {
         // Transfer bid share to owner of media
         token.safeTransfer(
             IERC721(mediaContract).ownerOf(tokenId),
-            _splitShare(bidShares.owner, bid.amount)
+            splitShare(bidShares.owner, bid.amount)
         );
         // Transfer bid share to creator of media
         token.safeTransfer(
             Media(mediaContract).tokenCreators(tokenId),
-            _splitShare(bidShares.creator, bid.amount)
+            splitShare(bidShares.creator, bid.amount)
         );
         // Transfer bid share to previous owner of media (if applicable)
         token.safeTransfer(
             Media(mediaContract).previousTokenOwners(tokenId),
-            _splitShare(bidShares.prevOwner, bid.amount)
+            splitShare(bidShares.prevOwner, bid.amount)
         );
 
         // Transfer media to bid recipient

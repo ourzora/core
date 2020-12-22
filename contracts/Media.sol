@@ -12,23 +12,12 @@ import {
     ReentrancyGuard
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Decimal} from "./Decimal.sol";
-import {Market} from "./Market.sol";
+import {IMarket} from "./interfaces/IMarket.sol";
 import "./interfaces/IMedia.sol";
 
 contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     using Counters for Counters.Counter;
     using SafeMath for uint256;
-
-    /* *******
-     * Events
-     * *******
-     */
-    event TokenURIUpdated(uint256 indexed _tokenId, address owner, string _uri);
-    event TokenMetadataURIUpdated(
-        uint256 indexed _tokenId,
-        address owner,
-        string _uri
-    );
 
     /* *******
      * Globals
@@ -218,7 +207,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     /**
      * @dev See IMedia.mint
      */
-    function mint(MediaData memory data, Market.BidShares memory bidShares)
+    function mint(MediaData memory data, IMarket.BidShares memory bidShares)
         public
         override
         nonReentrant
@@ -234,7 +223,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     function mintWithSig(
         address creator,
         MediaData memory data,
-        Market.BidShares memory bidShares,
+        IMarket.BidShares memory bidShares,
         EIP712Signature memory sig
     )
         public
@@ -290,13 +279,13 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
         _safeTransfer(ownerOf(tokenId), recipient, tokenId, "");
     }
 
-    function setAsk(uint256 tokenId, Market.Ask memory ask)
+    function setAsk(uint256 tokenId, IMarket.Ask memory ask)
         public
         override
         nonReentrant
         onlyApprovedOrOwner(msg.sender, tokenId)
     {
-        Market(marketContract).setAsk(tokenId, ask);
+        IMarket(marketContract).setAsk(tokenId, ask);
     }
 
     function removeAsk(uint256 tokenId)
@@ -305,17 +294,17 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
         nonReentrant
         onlyApprovedOrOwner(msg.sender, tokenId)
     {
-        Market(marketContract).removeAsk(tokenId);
+        IMarket(marketContract).removeAsk(tokenId);
     }
 
-    function setBid(uint256 tokenId, Market.Bid memory bid)
+    function setBid(uint256 tokenId, IMarket.Bid memory bid)
         public
         override
         nonReentrant
         onlyExistingToken(tokenId)
     {
         require(msg.sender == bid.bidder, "Market: Bidder must be msg sender");
-        Market(marketContract).setBid(tokenId, bid, msg.sender);
+        IMarket(marketContract).setBid(tokenId, bid, msg.sender);
     }
 
     function removeBid(uint256 tokenId)
@@ -324,16 +313,16 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
         nonReentrant
         onlyTokenCreated(tokenId)
     {
-        Market(marketContract).removeBid(tokenId, msg.sender);
+        IMarket(marketContract).removeBid(tokenId, msg.sender);
     }
 
-    function acceptBid(uint256 tokenId, Market.Bid memory bid)
+    function acceptBid(uint256 tokenId, IMarket.Bid memory bid)
         public
         override
         nonReentrant
         onlyApprovedOrOwner(msg.sender, tokenId)
     {
-        Market(marketContract).acceptBid(tokenId, bid);
+        IMarket(marketContract).acceptBid(tokenId, bid);
     }
 
     /**
@@ -465,7 +454,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     function _mintForCreator(
         address creator,
         MediaData memory data,
-        Market.BidShares memory bidShares
+        IMarket.BidShares memory bidShares
     ) internal onlyValidURI(data.tokenURI) onlyValidURI(data.metadataURI) {
         require(data.contentHash != 0, "Media: content hash must be non-empty");
         require(
@@ -492,7 +481,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
 
         tokenCreators[tokenId] = creator;
         previousTokenOwners[tokenId] = creator;
-        Market(marketContract).setBidShares(tokenId, bidShares);
+        IMarket(marketContract).setBidShares(tokenId, bidShares);
     }
 
     function _setTokenContentHash(uint256 tokenId, bytes32 contentHash)
@@ -542,7 +531,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
         address to,
         uint256 tokenId
     ) internal override {
-        Market(marketContract).removeAsk(tokenId);
+        IMarket(marketContract).removeAsk(tokenId);
 
         super._transfer(from, to, tokenId);
     }

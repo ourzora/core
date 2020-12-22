@@ -1,7 +1,7 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 
-import {Market} from "../Market.sol";
+import {IMarket} from "./IMarket.sol";
 
 interface IMedia {
     struct EIP712Signature {
@@ -22,6 +22,13 @@ interface IMedia {
         bytes32 metadataHash;
     }
 
+    event TokenURIUpdated(uint256 indexed _tokenId, address owner, string _uri);
+    event TokenMetadataURIUpdated(
+        uint256 indexed _tokenId,
+        address owner,
+        string _uri
+    );
+
     /**
      * @dev Return the metadata URI for a piece of media given the token URI
      */
@@ -33,7 +40,7 @@ interface IMedia {
     /**
      * @dev Mint new media for msg.sender.
      */
-    function mint(MediaData calldata data, Market.BidShares calldata bidShares)
+    function mint(MediaData calldata data, IMarket.BidShares calldata bidShares)
         external;
 
     /**
@@ -42,7 +49,7 @@ interface IMedia {
     function mintWithSig(
         address creator,
         MediaData calldata data,
-        Market.BidShares calldata bidShares,
+        IMarket.BidShares calldata bidShares,
         EIP712Signature calldata sig
     ) external;
 
@@ -53,15 +60,15 @@ interface IMedia {
      */
     function auctionTransfer(uint256 tokenId, address recipient) external;
 
-    function setAsk(uint256 tokenId, Market.Ask calldata ask) external;
+    function setAsk(uint256 tokenId, IMarket.Ask calldata ask) external;
 
     function removeAsk(uint256 tokenId) external;
 
-    function setBid(uint256 tokenId, Market.Bid calldata bid) external;
+    function setBid(uint256 tokenId, IMarket.Bid calldata bid) external;
 
     function removeBid(uint256 tokenId) external;
 
-    function acceptBid(uint256 tokenId, Market.Bid calldata bid) external;
+    function acceptBid(uint256 tokenId, IMarket.Bid calldata bid) external;
 
     function revokeApproval(uint256 tokenId) external;
 
