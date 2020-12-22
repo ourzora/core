@@ -338,7 +338,7 @@ describe('Market', () => {
     it('should revert if the bidder does not have a high enough allowance for their bidding currency', async () => {
       const auction = await auctionAs(mockTokenWallet);
       await expect(setBid(auction, defaultBid, defaultTokenId)).rejectedWith(
-        'Market: allowance not high enough to transfer token'
+        'SafeERC20: ERC20 operation did not succeed'
       );
     });
 
@@ -348,8 +348,38 @@ describe('Market', () => {
       await approveCurrency(currency, auction.address, bidderWallet);
 
       await expect(setBid(auction, defaultBid, defaultTokenId)).rejectedWith(
-        'Market: Not enough funds to transfer token'
+        'SafeERC20: ERC20 operation did not succeed'
       );
+    });
+
+    it('should revert if the bid currency is 0 address', async () => {
+      const auction = await auctionAs(mockTokenWallet);
+      await setBidShares(auction, defaultTokenId, defaultBidShares);
+      await mintCurrency(currency, defaultBid.bidder, defaultBid.amount);
+      await approveCurrency(currency, auction.address, bidderWallet);
+
+      await expect(
+        setBid(
+          auction,
+          { ...defaultBid, currency: AddressZero },
+          defaultTokenId
+        )
+      ).rejectedWith('Market: bid currency cannot be 0 address');
+    });
+
+    it('should revert if the bid recipient is 0 address', async () => {
+      const auction = await auctionAs(mockTokenWallet);
+      await setBidShares(auction, defaultTokenId, defaultBidShares);
+      await mintCurrency(currency, defaultBid.bidder, defaultBid.amount);
+      await approveCurrency(currency, auction.address, bidderWallet);
+
+      await expect(
+        setBid(
+          auction,
+          { ...defaultBid, recipient: AddressZero },
+          defaultTokenId
+        )
+      ).rejectedWith('Market: bid recipient cannot be 0 address');
     });
 
     it('should revert if the bidder bids 0 tokens', async () => {

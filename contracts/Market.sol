@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-3.0
+
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {Math} from "@openzeppelin/contracts/math/Math.sol";
-import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
-import {Counters} from "@openzeppelin/contracts/utils/Counters.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -17,7 +16,6 @@ import {IMarket} from "./interfaces/IMarket.sol";
  * @notice This contract contains all of the market logic for Media
  */
 contract Market is IMarket {
-    using Counters for Counters.Counter;
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -44,28 +42,6 @@ contract Market is IMarket {
      * Modifiers
      * *********
      */
-
-    /**
-     * @notice given an address for an ERC-20 contract, revert if the spender does not have
-     * a large enough balance for the amount or has not given approval for this contract to
-     * transfer funds
-     */
-    modifier onlyTransferAllowanceAndSolvent(
-        address spender,
-        address currencyAddress,
-        uint256 amount
-    ) {
-        IERC20 token = IERC20(currencyAddress);
-        require(
-            token.allowance(spender, address(this)) >= amount,
-            "Market: allowance not high enough to transfer token"
-        );
-        require(
-            token.balanceOf(spender) >= amount,
-            "Market: Not enough funds to transfer token"
-        );
-        _;
-    }
 
     /**
      * @notice require that the msg.sender is the configured media contract
@@ -175,6 +151,10 @@ contract Market is IMarket {
     function configure(address mediaContractAddress) external override {
         require(msg.sender == _owner, "Market: Only owner");
         require(mediaContract == address(0), "Market: Already configured");
+        require(
+            mediaContractAddress != address(0),
+            "Market: cannot set media contract as zero address"
+        );
 
         mediaContract = mediaContractAddress;
     }
@@ -210,8 +190,6 @@ contract Market is IMarket {
             "Market: Ask invalid for share splitting"
         );
 
-        uint256 hundredPercent = uint256(100).mul(Decimal.BASE);
-
         _tokenAsks[tokenId] = ask;
         emit AskCreated(tokenId, ask);
     }
@@ -233,20 +211,23 @@ contract Market is IMarket {
         uint256 tokenId,
         Bid memory bid,
         address spender
-    )
-        public
-        override
-        onlyMediaCaller
-        onlyTransferAllowanceAndSolvent(spender, bid.currency, bid.amount)
-    {
+    ) public override onlyMediaCaller {
         BidShares memory bidShares = _bidShares[tokenId];
         require(
             bidShares.creator.value.add(bid.sellOnShare.value) <=
                 uint256(100).mul(Decimal.BASE),
             "Market: Sell on fee invalid for share splitting"
         );
-        require(bid.bidder != address(0), "Market: Bidder cannot be 0 address");
+        require(bid.bidder != address(0), "Market: bidder cannot be 0 address");
         require(bid.amount != 0, "Market: cannot bid amount of 0");
+        require(
+            bid.currency != address(0),
+            "Market: bid currency cannot be 0 address"
+        );
+        require(
+            bid.recipient != address(0),
+            "Market: bid recipient cannot be 0 address"
+        );
 
         Bid storage existingBid = _tokenBidders[tokenId][bid.bidder];
 

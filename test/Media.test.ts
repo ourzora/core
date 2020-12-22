@@ -748,7 +748,7 @@ describe('Media', () => {
       const token = await tokenAs(bidderWallet);
       await expect(
         token.setBid(0, defaultBid(currencyAddr, bidderWallet.address))
-      ).rejectedWith('Market: allowance not high enough to transfer token');
+      ).rejectedWith('SafeERC20: ERC20 operation did not succeed');
     });
 
     it('should revert if the token bidder does not have a high enough balance for their bidding currency', async () => {
@@ -756,7 +756,7 @@ describe('Media', () => {
       await approveCurrency(currencyAddr, auctionAddress, bidderWallet);
       await expect(
         token.setBid(0, defaultBid(currencyAddr, bidderWallet.address))
-      ).rejectedWith('Market: Not enough funds to transfer token');
+      ).rejectedWith('SafeERC20: ERC20 operation did not succeed');
     });
 
     it('should set a bid', async () => {
