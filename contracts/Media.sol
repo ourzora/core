@@ -163,7 +163,8 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     /**
      * @dev return the URI for a particular piece of media with the specified tokenId
      * Note: This function is an override of the base OZ implementation because we
-     * will return the tokenURI even if the media has been burned.
+     * will return the tokenURI even if the media has been burned. In addition, this
+     * protocol does not support a base URI, so relevant conditionals are removed.
      */
     function tokenURI(uint256 tokenId)
         public
@@ -174,16 +175,7 @@ contract Media is IMedia, ERC721Burnable, ReentrancyGuard {
     {
         string memory _tokenURI = _tokenURIs[tokenId];
 
-        // If there is no base URI, return the token URI.
-        if (bytes(_baseURI).length == 0) {
-            return _tokenURI;
-        }
-        // If both are set, concatenate the baseURI and tokenURI (via abi.encodePacked).
-        if (bytes(_tokenURI).length > 0) {
-            return string(abi.encodePacked(_baseURI, _tokenURI));
-        }
-        // If there is a baseURI but no tokenURI, concatenate the tokenID to the baseURI.
-        return string(abi.encodePacked(_baseURI, tokenId.toString()));
+        return _tokenURI;
     }
 
     /**
