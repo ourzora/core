@@ -143,7 +143,7 @@ contract Market is IMarket {
     }
 
     /**
-     * @dev return a % of the specified amount. This function is used to split a bid into equal shares
+     * @dev return a % of the specified amount. This function is used to split a bid into shares
      * for a media's shareholders.
      */
     function splitShare(Decimal.D256 memory sharePercentage, uint256 amount)
