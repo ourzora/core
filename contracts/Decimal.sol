@@ -19,7 +19,6 @@ pragma experimental ABIEncoderV2;
  * at commit 2d8454e02702fe5bc455b848556660629c3cad36
  *
  * It has not been modified other than to use a newer solidity in the pragma to match the rest of the contract suite of this project
- * and to add `add` and `sub` methods that add and subtract decimals.
  */
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
@@ -68,21 +67,5 @@ library Decimal {
         returns (uint256)
     {
         return Math.getPartial(target, BASE, d.value);
-    }
-
-    function add(D256 memory d, uint256 amount)
-        internal
-        pure
-        returns (D256 memory)
-    {
-        return D256({value: d.value.add(amount)});
-    }
-
-    function sub(D256 memory d, uint256 amount)
-        internal
-        pure
-        returns (D256 memory)
-    {
-        return D256({value: d.value.sub(amount)});
     }
 }
