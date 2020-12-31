@@ -362,6 +362,7 @@ contract Market is IMarket {
         // Remove the accepted bid
         delete _tokenBidders[tokenId][bidder];
 
+        emit BidShareUpdated(tokenId, bidShares);
         emit BidFinalized(tokenId, bid);
     }
 }

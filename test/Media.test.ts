@@ -922,7 +922,7 @@ describe('Media', () => {
       expect(toNumWei(bidShares.creator.value)).eq(10 * 10 ** 18);
     });
 
-    it('should emit an event if the bid is accepted', async () => {
+    it('should emit a bid finalized event if the bid is accepted', async () => {
       const asBidder = await tokenAs(bidderWallet);
       const token = await tokenAs(ownerWallet);
       const auction = await MarketFactory.connect(auctionAddress, bidderWallet);
@@ -943,6 +943,32 @@ describe('Media', () => {
         toNumWei(bid.sellOnShare.value)
       );
       expect(logDescription.args.bid.bidder).to.eq(bid.bidder);
+    });
+
+    it('should emit a bid shares updated event if the bid is accepted', async () => {
+      const asBidder = await tokenAs(bidderWallet);
+      const token = await tokenAs(ownerWallet);
+      const auction = await MarketFactory.connect(auctionAddress, bidderWallet);
+      const bid = defaultBid(currencyAddr, bidderWallet.address);
+      const block = await provider.getBlockNumber();
+      await setBid(asBidder, bid, 0);
+      await token.acceptBid(0, bid);
+      const events = await auction.queryFilter(
+        auction.filters.BidShareUpdated(null, null),
+        block
+      );
+      expect(events.length).eq(1);
+      const logDescription = auction.interface.parseLog(events[0]);
+      expect(toNumWei(logDescription.args.tokenId)).to.eq(0);
+      expect(toNumWei(logDescription.args.bidShares.prevOwner.value)).to.eq(
+        10000000000000000000
+      );
+      expect(toNumWei(logDescription.args.bidShares.owner.value)).to.eq(
+        80000000000000000000
+      );
+      expect(toNumWei(logDescription.args.bidShares.creator.value)).to.eq(
+        10000000000000000000
+      );
     });
 
     it('should revert if not called by the owner', async () => {
