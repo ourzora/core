@@ -1,5 +1,5 @@
 {
-  "name": "@zoralabs/media",
+  "name": "@zoralabs/core",
   "version": "1.0.0-rc10",
   "private": false,
   "main": "./dist/index.js",
@@ -10,6 +10,8 @@
   ],
   "scripts": {
     "deploy": "ts-node scripts/deploy.ts",
+    "mint": "ts-node scripts/mint.ts",
+    "mediaInfo": "ts-node scripts/mediaInfo.ts",
     "build": "yarn build:contracts && yarn build:package",
     "prepublishOnly": "yarn build",
     "test": "hardhat test",
