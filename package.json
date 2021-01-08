@@ -1,6 +1,6 @@
 {
   "name": "@zoralabs/core",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,11 +18,11 @@
     "compile": "hardhat clean && hardhat compile",
     "typechain": "rm -rf ./typechain && typechain --show-stack-traces --target ethers-v5 --outDir ./typechain 'artifacts/!(build-info)/**/!(*.dbg*)*.json'",
     "build:contracts": "yarn compile && yarn typechain",
-    "build:package": "tsc && cp typechain/*.d.ts dist/typechain && cp -R addresses dist/addresses && cp -R artifacts/contracts dist/artifacts && cp -R contracts dist/contracts",
+    "build:package": "rm -rf ./dist && tsc && cp typechain/*.d.ts dist/typechain && cp -R addresses dist && cp -R artifacts/contracts dist/artifacts && cp -R contracts dist",
     "chain": "ganache-cli --networkId 50 --accounts 20 -e 10000000000 -l 10000000 -m 'concert load couple harbor equip island argue ramp clarify fence smart topic'",
     "watch": "ts-node scripts/watch.ts"
   },
-  "dependencies": {
+  "devDependencies": {
     "@ethersproject/keccak256": "^5.0.6",
     "@nomiclabs/buidler": "^1.4.8",
     "@nomiclabs/buidler-ethers": "^1.3.4",
