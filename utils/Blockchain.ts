@@ -1,10 +1,10 @@
-import { JsonRpcProvider } from '@ethersproject/providers';
+import { providers } from 'ethers'
 
 export class Blockchain {
   private _snapshotId: number;
-  private _provider: JsonRpcProvider;
+  private _provider: providers.JsonRpcProvider;
 
-  constructor(provider: JsonRpcProvider) {
+  constructor(provider: providers.JsonRpcProvider) {
     this._provider = provider;
   }
 
