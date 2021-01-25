@@ -22,6 +22,9 @@
     "chain": "ganache-cli --networkId 50 --accounts 20 -e 10000000000 -l 10000000 -m 'concert load couple harbor equip island argue ramp clarify fence smart topic'",
     "watch": "ts-node scripts/watch.ts"
   },
+  "dependencies": {
+    "ethers": "^5.0.19"
+  },
   "devDependencies": {
     "@ethersproject/keccak256": "^5.0.6",
     "@nomiclabs/buidler": "^1.4.8",
