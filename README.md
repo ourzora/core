@@ -4,6 +4,8 @@ This repository contains the core contracts that compose the Zora Media Protocol
 
 The protocol aims to provide a universal value system for media.
 
+Further documentation is available at [zora.engineering](https://zora.engineering)
+
 ## Table of Contents
 
 - [Whitepaper](#whitepaper)
@@ -27,7 +29,7 @@ The protocol aims to provide a universal value system for media.
 
 ## Whitepaper
 
-Whitepaper coming soon.
+The whitepaper is available at [zora.engineering](https://zora.engineering/whitepaper)
 
 ## Architecture
 
