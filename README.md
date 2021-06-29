@@ -29,7 +29,7 @@ Further documentation is available at [zora.engineering](https://zora.engineerin
 
 ## Whitepaper
 
-The whitepaper is available at [zora.engineering](https://zora.engineering/whitepaper)
+The whitepaper is available at [docs.zora.co](https://docs.zora.co/zoraos/dev/smart-contracts/whitepaper)
 
 ## Architecture
 
