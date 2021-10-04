@@ -1,6 +1,6 @@
 {
   "name": "@zoralabs/core",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "private": false,
   "license": "GPL-3.0",
   "main": "./dist/index.js",
