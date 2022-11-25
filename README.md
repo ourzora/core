@@ -66,8 +66,6 @@ struct Ask {
   uint256 amount;
   // Address to the ERC20 token being asked
   address currency;
-  // % of the next sale to award the previous owner
-  Decimal.D256 sellOnShare;
 }
 
 struct BidShares {
