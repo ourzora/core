@@ -1,7 +1,11 @@
 {
   "name": "@kanonart/zoralabs-core",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kanonart/zoralabs-core-kanon-fork.git"
+  },  
   "license": "GPL-3.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
