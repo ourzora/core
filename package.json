@@ -1,6 +1,6 @@
 {
-  "name": "@zoralabs/core",
-  "version": "1.0.8",
+  "name": "@kanonart/zoralabs-core",
+  "version": "1.0.0",
   "private": false,
   "license": "GPL-3.0",
   "main": "./dist/index.js",
