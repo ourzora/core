@@ -9,6 +9,9 @@
 # misc
 .DS_Store
 .env.*
+.env
+archive
+deployments
 
 # debug
 npm-debug.log*
