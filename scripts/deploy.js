@@ -237,7 +237,7 @@ async function main(configArray) {
       fs.mkdirSync(path.join(__dirname, '../deployments'));
     }
 
-    signer = await hre.ethers.getSigner();
+    signer = await hre.ethers.provider.getSigner();
 
     const DEPLOY_CONFIG = fastUtils.prepareDeployConfig(network, configArray);
 

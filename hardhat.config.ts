@@ -7,7 +7,6 @@ import 'hardhat-ignore-warnings';
 import "hardhat-typechain";
 import "solidity-coverage";
 import "@nomiclabs/hardhat-etherscan";
-import "@nomiclabs/hardhat-ethers";
 import * as fastUtils from './scripts/fastUtils/utils.js';
 
 // This is a sample Hardhat task. To learn how to create your own go to
