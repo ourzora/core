@@ -1,3 +1,11 @@
+# Kanon Note
+
+This is a fork of the Zora Core repository that updates the contracts to specify version 3.2.0 of the OpenZeppelin contracts.
+
+_No other changes were made to the contracts._
+
+The reason for the change is to be able to import the Zora Core contracts via yarn/npm into other projects that user newer versions of the OpenZeppelin contracts which use a different incompatible version of the solidity compiler.
+
 # Zora Media Protocol
 
 This repository contains the core contracts that compose the Zora Media Protocol.
