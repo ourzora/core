@@ -4,7 +4,7 @@ import "@nomiclabs/hardhat-etherscan";
 import dotenv from 'dotenv';
 dotenv.config();
 import 'hardhat-ignore-warnings';
-import "hardhat-typechain";
+// import "hardhat-typechain";
 import "solidity-coverage";
 import "@nomiclabs/hardhat-etherscan";
 import * as fastUtils from './scripts/fastUtils/utils.js';

@@ -14,16 +14,11 @@
     "./dist/*"
   ],
   "scripts": {
-    "deploy": "ts-node scripts/deploy.ts",
-    "mint": "ts-node scripts/mint.ts",
-    "mediaInfo": "ts-node scripts/mediaInfo.ts",
-    "build": "yarn build:contracts && yarn build:package",
+    "build": "yarn build:contracts",
     "prepublishOnly": "yarn build",
     "test": "hardhat test",
     "compile": "hardhat clean && hardhat compile",
-    "typechain": "rm -rf ./typechain && typechain --show-stack-traces --target ethers-v5 --outDir ./typechain 'artifacts/!(build-info)/**/!(*.dbg*)*.json'",
-    "build:contracts": "yarn compile && yarn typechain",
-    "build:package": "rm -rf ./dist && tsc && cp typechain/*.d.ts dist/typechain && cp -R addresses dist && cp -R artifacts/contracts dist/artifacts && cp -R contracts dist",
+    "build:contracts": "yarn compile",
     "chain": "ganache-cli --networkId 50 --accounts 20 -e 10000000000 -l 10000000 -m 'concert load couple harbor equip island argue ramp clarify fence smart topic'",
     "watch": "ts-node scripts/watch.ts"
   },
@@ -33,7 +28,6 @@
     "ethers": "^5.0.19",
     "hardhat-ignore-warnings": "^0.2.9",
     "hjson": "^3.2.2",
-    "openzeppelin-solidity-3.2": "npm:@openzeppelin/contracts@3.2.0",
     "solidity-coverage": "^0.8.5"
   },
   "devDependencies": {
@@ -44,7 +38,6 @@
     "@nomiclabs/hardhat-ethers": "^2.0.0",
     "@nomiclabs/hardhat-waffle": "^2.0.0",
     "@openzeppelin/contracts-ethereum-package": "^3.0.0",
-    "@typechain/ethers-v5": "^2.0.0",
     "@types/chai": "^4.2.14",
     "@types/chai-as-promised": "^7.1.3",
     "@types/mocha": "^8.0.3",
@@ -62,16 +55,14 @@
     "ganache-cli": "^6.12.0",
     "hardhat": "^2.0.2",
     "hardhat-deploy": "^0.7.0-beta.25",
-    "hardhat-typechain": "^0.3.3",
     "husky": ">=4",
     "lint-staged": ">=10",
     "minimist": "^1.2.5",
+    "openzeppelin-solidity-3.2": "npm:@openzeppelin/contracts@3.2.0",
     "prettier": "^2.1.2",
     "prettier-plugin-solidity": "^1.0.0-alpha.60",
     "system-commands": "^1.1.7",
-    "ts-generator": "^0.1.1",
     "ts-node": "^9.0.0",
-    "typechain": "^3.0.0",
     "typechain-target-ethers": "^1.0.4",
     "typescript": "^4.0.3"
   },

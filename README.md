@@ -6,6 +6,10 @@ _No other changes were made to the contracts._
 
 The reason for the change is to be able to import the Zora Core contracts via yarn/npm into other projects that user newer versions of the OpenZeppelin contracts which use a different incompatible version of the solidity compiler.
 
+I also removed Typechain as `tsc` wasn't happy when I made this change, even though `npx hardhat compile` works fine
+
+I removed the deployment scripts and instead replaced with generalised deployment scripts that can be run by configuring `./scripts/scripts-config.js` and then running `npx hardhat run scripts/deploy.js`
+
 # Zora Media Protocol
 
 This repository contains the core contracts that compose the Zora Media Protocol.
