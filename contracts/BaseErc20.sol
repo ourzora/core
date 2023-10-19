@@ -4,9 +4,9 @@ pragma solidity 0.6.8;
  * NOTE: This contract only exists to serve as a testing utility. It is not recommended to be used outside of a testing environment
  */
 
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {SafeMath} from "openzeppelin-solidity-3.2/math/SafeMath.sol";
+import {IERC20} from "openzeppelin-solidity-3.2/token/ERC20/IERC20.sol";
+import {Ownable} from "openzeppelin-solidity-3.2/access/Ownable.sol";
 
 /**
  * @title ERC20 Token

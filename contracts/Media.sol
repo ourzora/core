@@ -4,14 +4,14 @@ pragma experimental ABIEncoderV2;
 
 import {ERC721Burnable} from "./ERC721Burnable.sol";
 import {ERC721} from "./ERC721.sol";
-import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
-import {Counters} from "@openzeppelin/contracts/utils/Counters.sol";
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {Math} from "@openzeppelin/contracts/math/Math.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {EnumerableSet} from "openzeppelin-solidity-3.2/utils/EnumerableSet.sol";
+import {Counters} from "openzeppelin-solidity-3.2/utils/Counters.sol";
+import {SafeMath} from "openzeppelin-solidity-3.2/math/SafeMath.sol";
+import {Math} from "openzeppelin-solidity-3.2/math/Math.sol";
+import {IERC20} from "openzeppelin-solidity-3.2/token/ERC20/IERC20.sol";
 import {
     ReentrancyGuard
-} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+} from "openzeppelin-solidity-3.2/utils/ReentrancyGuard.sol";
 import {Decimal} from "./Decimal.sol";
 import {IMarket} from "./interfaces/IMarket.sol";
 import "./interfaces/IMedia.sol";

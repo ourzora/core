@@ -3,10 +3,10 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import {SafeMath} from "openzeppelin-solidity-3.2/math/SafeMath.sol";
+import {IERC721} from "openzeppelin-solidity-3.2/token/ERC721/IERC721.sol";
+import {IERC20} from "openzeppelin-solidity-3.2/token/ERC20/IERC20.sol";
+import {SafeERC20} from "openzeppelin-solidity-3.2/token/ERC20/SafeERC20.sol";
 import {Decimal} from "./Decimal.sol";
 import {Media} from "./Media.sol";
 import {IMarket} from "./interfaces/IMarket.sol";

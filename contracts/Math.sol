@@ -1,7 +1,7 @@
 pragma solidity 0.6.8;
 pragma experimental ABIEncoderV2;
 
-import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {SafeMath} from "openzeppelin-solidity-3.2/math/SafeMath.sol";
 
 /**
  * @title Math
