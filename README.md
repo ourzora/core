@@ -1,3 +1,11 @@
+# Deprecation Notice:
+
+This is a legacy NFT protocol which ZORA does not use anymore but is still alive onchain due to the nature of decentralized applications.
+
+The media onchain is supported by multiple NFT platforms (including ZORA) for historical purposes, trading, and display but we strongly recommend using other approaches to mint and sell NFTs today (including our newer https://github.com/ourzora/zora-protocol protocol monorepo).
+
+
+
 # Zora Media Protocol
 
 This repository contains the core contracts that compose the Zora Media Protocol.
